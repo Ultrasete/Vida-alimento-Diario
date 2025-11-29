@@ -484,6 +484,9 @@
                 status: 'paid' 
             });
 
+            // Estados Persistentes - BÍBLIA (HIGHLIGHTS)
+            const [highlights, setHighlights] = usePersistentState('bibleHighlights', {});
+
             // ESTADOS JOGOS
             const [gameMode, setGameMode] = useState('menu'); // 'menu', 'quiz', 'memory', 'hangman'
 
@@ -875,6 +878,35 @@
                 else { if (!chapterContent) return; const text = `${chapterContent.book.name} ${chapterContent.chapter.number}. ${chapterContent.verses.map(v => v.text).join(' ')}`; const u = new SpeechSynthesisUtterance(text); if (voices[selectedVoiceIndex]) u.voice = voices[selectedVoiceIndex]; u.onend = () => setIsSpeaking(false); window.speechSynthesis.speak(u); setIsSpeaking(true); }
             };
 
+            // --- LÓGICA DE MARCA-TEXTO (HIGHLIGHT) ---
+            const handleVerseMouseUp = (verseNum) => {
+                const selection = window.getSelection();
+                // Verifica se houve seleção de texto (mesmo que pequena)
+                if (selection && selection.toString().length > 0) {
+                    const key = `${selectedBook}-${selectedChapter}-${verseNum}`;
+                    
+                    setHighlights(prev => {
+                        const newHighlights = { ...prev };
+                        if (newHighlights[key]) {
+                            // Se já estiver marcado, remove
+                            delete newHighlights[key];
+                        } else {
+                            // Se não, adiciona a cor amarela
+                            newHighlights[key] = '#fef08a'; // bg-yellow-200
+                        }
+                        return newHighlights;
+                    });
+                    
+                    // Remove a seleção azul nativa do navegador para mostrar o amarelo
+                    selection.removeAllRanges();
+                }
+            };
+
+            const isVerseHighlighted = (verseNum) => {
+                const key = `${selectedBook}-${selectedChapter}-${verseNum}`;
+                return highlights[key];
+            };
+
             const analyzeNames = () => {
                 if (!inputName.trim()) return;
                 const names = inputName.trim().split(/\s+/);
@@ -985,8 +1017,26 @@
                                 <div className={`flex-1 p-8 overflow-y-auto relative bible-content-area ${showBibleNav ? 'hidden md:block' : 'block'}`}>
                                     {loadingBible ? <div className="text-center mt-20 text-gray-500">Carregando...</div> : chapterContent && (
                                         <>
-                                            <div className="flex justify-between items-center mb-6 border-b pb-4"><h2 className="text-3xl font-serif font-bold text-red-900">{chapterContent.book.name} {chapterContent.chapter.number}</h2><button onClick={toggleNarrator} className={`p-2 rounded-full ${isSpeaking?'bg-red-100 text-red-600':'bg-gray-100 text-gray-600'}`}><IconWrapper name={isSpeaking?'square':'volume-2'}/></button></div>
-                                            <div className="space-y-4 font-serif text-gray-800" style={{fontSize: fontSize}}>{chapterContent.verses?.map(v => <p key={v.number}><span className="text-yellow-600 font-bold text-xs mr-1">{v.number}</span>{v.text}</p>)}</div>
+                                            <div className="flex justify-between items-center mb-6 border-b pb-4">
+                                                <h2 className="text-3xl font-serif font-bold text-red-900">{chapterContent.book.name} {chapterContent.chapter.number}</h2>
+                                                <div className="flex gap-2">
+                                                    <span className="text-xs text-gray-400 flex items-center bg-gray-100 px-2 rounded">Selecione texto para marcar</span>
+                                                    <button onClick={toggleNarrator} className={`p-2 rounded-full ${isSpeaking?'bg-red-100 text-red-600':'bg-gray-100 text-gray-600'}`}><IconWrapper name={isSpeaking?'square':'volume-2'}/></button>
+                                                </div>
+                                            </div>
+                                            <div className="space-y-4 font-serif text-gray-800" style={{fontSize: fontSize}}>
+                                                {chapterContent.verses?.map(v => (
+                                                    <p 
+                                                        key={v.number} 
+                                                        onMouseUp={() => handleVerseMouseUp(v.number)}
+                                                        className={`p-1 rounded transition-colors duration-300 cursor-text ${isVerseHighlighted(v.number) ? 'bg-yellow-200 shadow-sm border-l-4 border-yellow-400 pl-2' : 'hover:bg-gray-50'}`}
+                                                        title="Selecione o texto para marcar/desmarcar"
+                                                    >
+                                                        <span className="text-yellow-600 font-bold text-xs mr-1 select-none">{v.number}</span>
+                                                        {v.text}
+                                                    </p>
+                                                ))}
+                                            </div>
                                         </>
                                     )}
                                 </div>
