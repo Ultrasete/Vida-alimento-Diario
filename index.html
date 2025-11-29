@@ -1106,9 +1106,6 @@
                                         </div>
                                     </div>
                                 </div>
-
-                                <h3 className="font-bold text-gray-700 mb-4 ml-2">Playlists do YouTube</h3>
-                                <div className="grid md:grid-cols-3 gap-4">{radioStations.map(r => (<div key={r.id} className="bg-white rounded-xl shadow overflow-hidden p-4 text-center"><h3 className="font-bold mb-2 text-gray-800">{r.name}</h3><div className="relative pt-[56.25%] mb-4"><iframe className="absolute top-0 left-0 w-full h-full rounded" src={`https://www.youtube.com/embed/${r.videoId}`} frameBorder="0" allow="autoplay; encrypted-media" allowFullScreen></iframe></div><button onClick={()=>window.open(`https://www.youtube.com/playlist?list=${r.videoId}`, '_blank')} className="bg-red-700 text-white px-4 py-2 rounded text-sm flex items-center justify-center gap-2 mx-auto hover:bg-red-800"><IconWrapper name="external-link" size={14}/> Abrir no YouTube</button></div>))}</div>
                             </div>
                         )}
                         {/* --- DIÁRIO --- */}
