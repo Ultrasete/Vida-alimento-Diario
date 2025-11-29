@@ -309,29 +309,89 @@
             { id: 2, name: "Adoração Profunda", videoId: "PLz8XQOhoC305-qO9gV7z-XQy5Cq-LdY_K", color: "bg-red-700" },
             { id: 3, name: "Gospel Internacional", videoId: "PLz8XQOhoC306-qO9gV7z-XQy5Cq-LdY_K", color: "bg-gray-400" }
         ];
+        
+        // --- BASE DE DADOS DE VERSÍCULOS EXPANDIDA ---
         const verseDatabase = {
             motivacao: [
                 { text: "Porque sou eu que conheço os planos que tenho para vós, diz o Senhor, planos de fazer-vos prosperar e não de causar dano, planos de dar-vos esperança e um futuro.", ref: "Jeremias 29:11" },
                 { text: "Tudo posso naquele que me fortalece.", ref: "Filipenses 4:13" },
                 { text: "Sede fortes e corajosos; não temais, nem vos atemorizeis diante deles; porque o Senhor vosso Deus é quem vai convosco. Não vos deixará, nem vos desamparará.", ref: "Deuteronômio 31:6" },
-                { text: "Mas os que esperam no Senhor renovarão as forças, subirão com asas como águias; correrão, e não se cansarão; caminharão, e não se fatigarão.", ref: "Isaías 40:31" }
+                { text: "Mas os que esperam no Senhor renovarão as forças, subirão com asas como águias; correrão, e não se cansarão; caminharão, e não se fatigarão.", ref: "Isaías 40:31" },
+                { text: "Não fui eu que ordenei a você? Seja forte e corajoso! Não se apavore nem desanime, pois o Senhor, o seu Deus, estará com você por onde você andar.", ref: "Josué 1:9" },
+                { text: "Entrega o teu caminho ao Senhor; confia nele, e ele o fará.", ref: "Salmos 37:5" },
+                { text: "E Jesus, olhando para eles, disse-lhes: Aos homens é isso impossível, mas a Deus tudo é possível.", ref: "Mateus 19:26" },
+                { text: "Mil cairão ao teu lado, e dez mil à tua direita, mas não chegará a ti.", ref: "Salmos 91:7" },
+                { text: "O Senhor é a minha luz e a minha salvação; a quem temerei? O Senhor é a força da minha vida; de quem me recearei?", ref: "Salmos 27:1" },
+                { text: "Porque para Deus nada é impossível.", ref: "Lucas 1:37" },
+                { text: "Ainda que eu andasse pelo vale da sombra da morte, não temeria mal algum, porque tu estás comigo.", ref: "Salmos 23:4" },
+                { text: "Vinde a mim, todos os que estais cansados e oprimidos, e eu vos aliviarei.", ref: "Mateus 11:28" },
+                { text: "Mas, em todas estas coisas somos mais que vencedores, por aquele que nos amou.", ref: "Romanos 8:37" },
+                { text: "O choro pode durar uma noite, mas a alegria vem pela manhã.", ref: "Salmos 30:5" },
+                { text: "Ora, a fé é a certeza daquilo que esperamos e a prova das coisas que não vemos.", ref: "Hebreus 11:1" },
+                { text: "Não andeis ansiosos por coisa alguma; antes em tudo sejam os vossos pedidos conhecidos diante de Deus pela oração e súplica com ações de graças.", ref: "Filipenses 4:6" },
+                { text: "Confia no Senhor de todo o teu coração e não te estribes no teu próprio entendimento.", ref: "Provérbios 3:5" },
+                { text: "Deus é o nosso refúgio e fortaleza, socorro bem presente na angústia.", ref: "Salmos 46:1" },
+                { text: "Portanto, não se preocupem com o amanhã, pois o amanhã trará as suas próprias preocupações. Basta a cada dia o seu próprio mal.", ref: "Mateus 6:34" },
+                { text: "Sabemos que Deus age em todas as coisas para o bem daqueles que o amam, dos que foram chamados de acordo com o seu propósito.", ref: "Romanos 8:28" }
             ],
             financeiro: [
                 { text: "O rico domina sobre os pobres e o que toma emprestado é servo do que empresta.", ref: "Provérbios 22:7" },
                 { text: "Honra ao Senhor com os teus bens, e com a primeira parte de todos os teus ganhos.", ref: "Provérbios 3:9" },
-                { text: "Pois qual de vós, querendo edificar uma torre, não se assenta primeiro a fazer as contas dos gastos?", ref: "Lucas 14:28" }
+                { text: "Pois qual de vós, querendo edificar uma torre, não se assenta primeiro a fazer as contas dos gastos?", ref: "Lucas 14:28" },
+                { text: "O meu Deus suprirá todas as vossas necessidades segundo as suas riquezas na glória em Cristo Jesus.", ref: "Filipenses 4:19" },
+                { text: "Lembra-te do Senhor teu Deus, porque é ele que te dá força para adquirires riquezas.", ref: "Deuteronômio 8:18" },
+                { text: "O Senhor te abrirá o seu bom tesouro, o céu, para dar chuva à tua terra no seu tempo, e para abençoar toda a obra das tuas mãos.", ref: "Deuteronômio 28:12" },
+                { text: "A bênção do Senhor é que enriquece; e não traz consigo dores.", ref: "Provérbios 10:22" },
+                { text: "O homem fiel será cumulado de bênçãos, mas o que se apressa a enriquecer não ficará impune.", ref: "Provérbios 28:20" },
+                { text: "Dai, e ser-vos-á dado; boa medida, recalcada, sacudida e transbordando, vos deitarão no vosso regaço.", ref: "Lucas 6:38" },
+                { text: "Quem ama o dinheiro jamais dele se farta; e quem ama a abundância nunca se farta da renda.", ref: "Eclesiastes 5:10" },
+                { text: "Mais vale o pouco com o temor do Senhor, do que um grande tesouro onde há inquietação.", ref: "Provérbios 15:16" },
+                { text: "Trazei todos os dízimos à casa do tesouro, para que haja mantimento na minha casa.", ref: "Malaquias 3:10" },
+                { text: "Bem-aventurado o homem que teme ao Senhor... Prosperidade e riquezas haverá na sua casa.", ref: "Salmos 112:1-3" },
+                { text: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos.", ref: "Provérbios 16:3" },
+                { text: "A riqueza obtida com falsidade é neblina que se dissipa e armadilha mortal.", ref: "Provérbios 21:6" },
+                { text: "Não amem o dinheiro e contentem-se com o que vocês têm.", ref: "Hebreus 13:5" },
+                { text: "O preguiçoso deseja e nada tem, mas a alma dos diligentes engorda.", ref: "Provérbios 13:4" },
+                { text: "A riqueza de procedência vã diminuirá, mas quem a ajunta com o próprio trabalho a aumentará.", ref: "Provérbios 13:11" }
             ],
             espiritual: [
                 { text: "Vinde a mim, todos os que estais cansados e oprimidos, e eu vos aliviarei.", ref: "Mateus 11:28" },
                 { text: "Verdadeiramente ele tomou sobre si as nossas enfermidades, e as nossas dores levou sobre si.", ref: "Isaías 53:4" },
-                { text: "Sara os quebrantados de coração, e lhes ata as suas feridas.", ref: "Salmo 147:3" }
+                { text: "Sara os quebrantados de coração, e lhes ata as suas feridas.", ref: "Salmo 147:3" },
+                { text: "Ele é quem perdoa todas as tuas iniquidades; quem sara todas as tuas enfermidades.", ref: "Salmos 103:3" },
+                { text: "A oração da fé salvará o doente, e o Senhor o levantará.", ref: "Tiago 5:15" },
+                { text: "Cura-me, Senhor, e sararei; salva-me, e serei salvo; porque tu és o meu louvor.", ref: "Jeremias 17:14" },
+                { text: "Eis que eu trarei a ela saúde e cura, e os sararei, e lhes manifestarei abundância de paz e de verdade.", ref: "Jeremias 33:6" },
+                { text: "Pelas suas pisaduras fomos sarados.", ref: "Isaías 53:5" },
+                { text: "O Senhor o sustentará no leito da enfermidade; tu o restaurarás da sua cama de doença.", ref: "Salmos 41:3" },
+                { text: "Não temas, porque eu sou contigo; não te assombres, porque eu sou teu Deus; eu te fortaleço, e te ajudo, e te sustento com a destra da minha justiça.", ref: "Isaías 41:10" },
+                { text: "Visto que você é precioso e honrado à minha vista, e porque eu o amo...", ref: "Isaías 43:4" },
+                { text: "Lançando sobre ele toda a vossa ansiedade, porque ele tem cuidado de vós.", ref: "1 Pedro 5:7" },
+                { text: "Deixo-vos a paz, a minha paz vos dou; não vo-la dou como o mundo a dá. Não se turbe o vosso coração, nem se atemorize.", ref: "João 14:27" },
+                { text: "Clama a mim, e responder-te-ei, e anunciar-te-ei coisas grandes e firmes que não sabes.", ref: "Jeremias 33:3" },
+                { text: "Porque eu, o Senhor teu Deus, te tomo pela tua mão direita; e te digo: Não temas, eu te ajudo.", ref: "Isaías 41:13" },
+                { text: "O Senhor está perto dos que têm o coração quebrantado e salva os de espírito abatido.", ref: "Salmos 34:18" }
             ],
             familia: [
                 { text: "Crê no Senhor Jesus e serás salvo, tu e a tua casa.", ref: "Atos 16:31" },
                 { text: "Educa a criança no caminho em que deve andar; e até quando envelhecer não se desviará dele.", ref: "Provérbios 22:6" },
-                { text: "Acima de tudo, porém, tende amor intenso uns para com os outros, porque o amor cobre uma multidão de pecados.", ref: "1 Pedro 4:8" }
+                { text: "Acima de tudo, porém, tende amor intenso uns para com os outros, porque o amor cobre uma multidão de pecados.", ref: "1 Pedro 4:8" },
+                { text: "Eu e a minha casa serviremos ao Senhor.", ref: "Josué 24:15" },
+                { text: "E estas palavras, que hoje te ordeno, estarão no teu coração; e as ensinarás a teus filhos e delas falarás assentado em tua casa, e andando pelo caminho...", ref: "Deuteronômio 6:6-7" },
+                { text: "Honra a teu pai e a tua mãe, para que se prolonguem os teus dias na terra que o Senhor teu Deus te dá.", ref: "Êxodo 20:12" },
+                { text: "A mulher sábia edifica a sua casa, mas a tola a derruba com as próprias mãos.", ref: "Provérbios 14:1" },
+                { text: "Herança do Senhor são os filhos; o fruto do ventre o seu galardão.", ref: "Salmos 127:3" },
+                { text: "Oh! quão bom e quão suave é que os irmãos vivam em união.", ref: "Salmos 133:1" },
+                { text: "Maridos, amem suas mulheres, assim como Cristo amou a igreja e entregou-se a si mesmo por ela.", ref: "Efésios 5:25" },
+                { text: "Filhos, obedecei em tudo a vossos pais, porque isto é agradável ao Senhor.", ref: "Colossenses 3:20" },
+                { text: "Se alguém não cuida dos seus, e especialmente dos da sua própria casa, negou a fé e é pior do que o descrente.", ref: "1 Timóteo 5:8" },
+                { text: "Coroa dos velhos são os filhos dos filhos; e a glória dos filhos são seus pais.", ref: "Provérbios 17:6" },
+                { text: "O amor é paciente, o amor é bondoso. Não inveja, não se vangloria, não se orgulha.", ref: "1 Coríntios 13:4" },
+                { text: "Suportem-se uns aos outros e perdoem as queixas que tiverem uns contra os outros. Perdoem como o Senhor lhes perdoou.", ref: "Colossenses 3:13" },
+                { text: "A tua mulher será como a videira frutífera aos lados da tua casa; os teus filhos como plantas de oliveira à roda da tua mesa.", ref: "Salmos 128:3" }
             ]
         };
+        
         const offlineBible = {
             "Gênesis": { 1: [{ number: 1, text: "No princípio criou Deus o céu e a terra." }] },
             "Salmos": { 23: [{ number: 1, text: "O SENHOR é o meu pastor, nada me faltará." }] }
@@ -633,15 +693,29 @@
                 if (!cardText) setCardText(randomVerse.text);
                 fetchChapter(selectedBook, selectedChapter);
                 
-                // MELHORIA DE VOZ: Tenta selecionar uma voz melhor automaticamente
+                // MELHORIA DE VOZ: Tenta selecionar uma voz MASCULINA ou melhor automaticamente
                 const loadVoices = () => { 
                     if ('speechSynthesis' in window) { 
                         const available = window.speechSynthesis.getVoices(); 
                         setVoices(available); 
                         
-                        // Tenta encontrar uma voz "boa" (Google ou Microsoft) em PT
+                        // Filtra vozes em Português
                         const ptVoices = available.filter(v => v.lang.includes('pt'));
-                        const bestVoice = ptVoices.find(v => v.name.includes("Google") || v.name.includes("Microsoft")) || ptVoices[0];
+                        
+                        // Lista de preferência para tentar achar vozes masculinas ou de alta qualidade
+                        // "Daniel" e "Felipe" são vozes masculinas comuns. "Google" geralmente tem boa qualidade.
+                        const preferredNames = ["Daniel", "Felipe", "Ricardo", "Joaquim", "Microsoft", "Google"];
+                        
+                        let bestVoice = ptVoices[0]; // Fallback para a primeira voz PT encontrada
+                        
+                        // Tenta encontrar uma voz que corresponda à lista de preferência
+                        for (const name of preferredNames) {
+                            const found = ptVoices.find(v => v.name.includes(name));
+                            if (found) {
+                                bestVoice = found;
+                                break; // Para na primeira encontrada (prioridade para masculinas)
+                            }
+                        }
                         
                         if (bestVoice) {
                             const index = available.indexOf(bestVoice);
@@ -1171,6 +1245,23 @@
                             </div>
                         )}
                     </main>
+
+                    {/* --- RODAPÉ / FOOTER --- */}
+                    <footer className="bg-gray-900 text-gray-300 py-8 mt-auto no-print border-t border-gray-800">
+                        <div className="container mx-auto px-4 text-center">
+                            <p className="font-bold text-lg text-white mb-2">Direitos Autorais &copy; Jânio Carlos P J</p>
+                            <p className="text-sm mb-4 text-gray-400">Sugestão e atualização: 28/11/2025</p>
+                            <a 
+                                href="https://wa.me/5575998312170" 
+                                target="_blank" 
+                                rel="noopener noreferrer" 
+                                className="inline-flex items-center gap-2 bg-green-600 text-white px-6 py-2 rounded-full hover:bg-green-700 transition-colors font-bold text-sm shadow-lg"
+                            >
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+                                WhatsApp: +55 (75) 99831-2170
+                            </a>
+                        </div>
+                    </footer>
                 </div>
             );
         }
