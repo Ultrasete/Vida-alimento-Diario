@@ -632,7 +632,23 @@
                 setDailyVerse(randomVerse);
                 if (!cardText) setCardText(randomVerse.text);
                 fetchChapter(selectedBook, selectedChapter);
-                const loadVoices = () => { if ('speechSynthesis' in window) { const available = window.speechSynthesis.getVoices(); setVoices(available); const ptIndex = available.findIndex(v => v.lang.includes('pt')); if (ptIndex !== -1) setSelectedVoiceIndex(ptIndex); } };
+                
+                // MELHORIA DE VOZ: Tenta selecionar uma voz melhor automaticamente
+                const loadVoices = () => { 
+                    if ('speechSynthesis' in window) { 
+                        const available = window.speechSynthesis.getVoices(); 
+                        setVoices(available); 
+                        
+                        // Tenta encontrar uma voz "boa" (Google ou Microsoft) em PT
+                        const ptVoices = available.filter(v => v.lang.includes('pt'));
+                        const bestVoice = ptVoices.find(v => v.name.includes("Google") || v.name.includes("Microsoft")) || ptVoices[0];
+                        
+                        if (bestVoice) {
+                            const index = available.indexOf(bestVoice);
+                            setSelectedVoiceIndex(index !== -1 ? index : 0); 
+                        }
+                    } 
+                };
                 if ('speechSynthesis' in window) { loadVoices(); window.speechSynthesis.onvoiceschanged = loadVoices; }
                 if (inputName) analyzeNames();
             }, []);
@@ -1085,7 +1101,7 @@
                                         {/* Audio Element Hidden - Using a reliable HTTPS Gospel stream as default */}
                                         <audio 
                                             ref={audioRef} 
-                                            src="https://ice.fabricahost.com.br/radiogospel901" 
+                                            src="https://live.hunter.fm/gospel_stream?ag=mp3" 
                                             crossOrigin="anonymous"
                                             onError={() => {
                                                 alert("Erro ao carregar o stream de áudio. Tente novamente mais tarde.");
