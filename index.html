@@ -528,6 +528,7 @@
             const [bibleError, setBibleError] = useState(false);
             const [fontSize, setFontSize] = useState(18);
             const [isSpeaking, setIsSpeaking] = useState(false);
+            const isSpeakingRef = useRef(false); // Ref para evitar problema de closure
             const [voices, setVoices] = useState([]);
             const [selectedVoiceIndex, setSelectedVoiceIndex] = useState(0);
             const [selectedBg, setSelectedBg] = useState(cardBackgrounds[0]);
@@ -559,6 +560,7 @@
             const canvasRef = useRef(null);
             const qrCodeRef = useRef(null);
             const qrInstance = useRef(null);
+            const speechRef = useRef(null); // Ref for speech synthesis to prevent GC
 
             // Helpers for Diary
             const getCurrentDateKey = () => formatDateKey(currentDate);
@@ -875,8 +877,56 @@
 
             const toggleNarrator = () => {
                 if (!('speechSynthesis' in window)) return;
-                if (isSpeaking) { window.speechSynthesis.cancel(); setIsSpeaking(false); } 
-                else { if (!chapterContent) return; const text = `${chapterContent.book.name} ${chapterContent.chapter.number}. ${chapterContent.verses.map(v => v.text).join(' ')}`; const u = new SpeechSynthesisUtterance(text); if (voices[selectedVoiceIndex]) u.voice = voices[selectedVoiceIndex]; u.onend = () => setIsSpeaking(false); window.speechSynthesis.speak(u); setIsSpeaking(true); }
+                
+                if (isSpeaking) { 
+                    window.speechSynthesis.cancel(); 
+                    setIsSpeaking(false);
+                    isSpeakingRef.current = false;
+                } else {
+                    if (!chapterContent || !chapterContent.verses) return;
+                    setIsSpeaking(true);
+                    isSpeakingRef.current = true;
+                    
+                    // Lógica para ler versículo por versículo para evitar timeout do navegador
+                    let currentVerseIndex = 0;
+                    
+                    const speakNextVerse = () => {
+                        if (!isSpeakingRef.current) return; // Checa o ref atualizado imediatamente
+                        if (currentVerseIndex >= chapterContent.verses.length) {
+                            setIsSpeaking(false);
+                            isSpeakingRef.current = false;
+                            return;
+                        }
+
+                        const verse = chapterContent.verses[currentVerseIndex];
+                        // Lê o número do versículo e o texto, ou só o texto
+                        const textToRead = `${verse.text}`;
+                        const utterance = new SpeechSynthesisUtterance(textToRead);
+                        
+                        if (voices[selectedVoiceIndex]) {
+                            utterance.voice = voices[selectedVoiceIndex];
+                        }
+                        
+                        utterance.onend = () => {
+                            currentVerseIndex++;
+                            speakNextVerse();
+                        };
+                        
+                        utterance.onerror = (e) => {
+                            console.error("Erro na fala", e);
+                            setIsSpeaking(false);
+                            isSpeakingRef.current = false;
+                        };
+
+                        // Salva referência global para prevenir Garbage Collection
+                        speechRef.current = utterance;
+                        window.speechSynthesis.speak(utterance);
+                    };
+
+                    // Inicia a leitura
+                    window.speechSynthesis.cancel(); // Limpa fila anterior
+                    speakNextVerse();
+                }
             };
 
             // --- LÓGICA DE MARCA-TEXTO (HIGHLIGHT) ---
@@ -893,7 +943,12 @@
                 // Verifica se houve seleção de texto OU se é um clique direto no versículo (para facilitar mobile)
                 // Permitimos marcar clicando no paragrafo todo se a intenção for estudo
                 
-                const key = `${selectedBook}-${selectedChapter}-${verseNum}`;
+                if (!chapterContent) return;
+                const bookName = chapterContent.book.name;
+                const chapterNum = chapterContent.chapter.number;
+                
+                // CHAVE ÚNICA BASEADA NO LIVRO E CAPÍTULO ATUAL
+                const key = `${bookName}-${chapterNum}-${verseNum}`;
                 
                 setHighlights(prev => {
                     const newHighlights = { ...prev };
@@ -912,7 +967,11 @@
             };
 
             const getVerseHighlightStyle = (verseNum) => {
-                const key = `${selectedBook}-${selectedChapter}-${verseNum}`;
+                if (!chapterContent) return {};
+                const bookName = chapterContent.book.name;
+                const chapterNum = chapterContent.chapter.number;
+                
+                const key = `${bookName}-${chapterNum}-${verseNum}`;
                 const color = highlights[key];
                 if (!color) return {};
                 return { backgroundColor: color, paddingLeft: '8px', borderLeft: '4px solid rgba(0,0,0,0.1)' };
@@ -958,11 +1017,20 @@
             const downloadCard = () => { const canvas = canvasRef.current; if (!canvas) return; const link = document.createElement('a'); link.download = 'cartao.png'; link.href = canvas.toDataURL(); link.click(); };
             const shareCard = async () => { const canvas = canvasRef.current; if (!canvas) return; canvas.toBlob(async (blob) => { const file = new File([blob], "cartao_sistema_vida.png", { type: "image/png" }); if (navigator.share) { try { await navigator.share({ files: [file], title: 'Sistema Vida', text: cardText }); } catch (error) { console.log('Erro partilha:', error); } } else { alert("Partilha direta não suportada. Baixe a imagem primeiro."); } }); };
 
-            const gerarQRCodeVisual = (texto) => { if (!qrCodeRef.current) return; if (qrInstance.current) { qrInstance.current.clear(); qrInstance.current.makeCode(texto); } else { qrInstance.current = new QRCode(qrCodeRef.current, { text: texto, width: 256, height: 256, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H }); } };
+            const gerarQRCodeVisual = (texto) => { if (!qrCodeRef.current) return;
+                // LIMPAR O CONTAINER ANTES DE GERAR NOVO (FIX PARA BUGS DE QRCODE)
+                qrCodeRef.current.innerHTML = '';
+                new QRCode(qrCodeRef.current, { text: texto, width: 256, height: 256, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H });
+            };
+            
             const handleGerarUrl = () => { if(qrUrl) gerarQRCodeVisual(qrUrl); else alert("Digite uma URL."); };
             const handleGerarWifi = () => { if(qrWifiSsid) gerarQRCodeVisual(`WIFI:T:WPA;S:${qrWifiSsid};P:${qrWifiPass};;`); else alert("SSID é obrigatório."); };
             const handleGerarPix = () => { if (!qrPixKey || !qrPixName || !qrPixCity) { alert("Chave, Nome e Cidade são obrigatórios."); return; } const merchantAccountInfo = [formatarEMV('00', 'br.gov.bcb.pix'), formatarEMV('01', qrPixKey)].join(''); let brCode = [formatarEMV('00', '01'), formatarEMV('26', merchantAccountInfo), formatarEMV('52', '0000'), formatarEMV('53', '986')]; if (qrPixAmount) { const valor = parseFloat(qrPixAmount.replace(",", ".")).toFixed(2); brCode.push(formatarEMV('54', valor)); } brCode.push(formatarEMV('58', 'BR')); brCode.push(formatarEMV('59', simplificarTexto(qrPixName).substring(0, 25))); brCode.push(formatarEMV('60', simplificarTexto(qrPixCity).substring(0, 15))); brCode.push(formatarEMV('62', formatarEMV('05', '***'))); brCode.push('6304'); const stringPIX = brCode.join(''); const brCodeCompleto = stringPIX + crc16(stringPIX); gerarQRCodeVisual(brCodeCompleto); };
-            const downloadQRCode = () => { const img = qrCodeRef.current.querySelector('img'); if (img) { const link = document.createElement('a'); link.href = img.src; link.download = 'qrcode.png'; link.click(); } };
+            const downloadQRCode = () => { 
+                if (!qrCodeRef.current) return;
+                const img = qrCodeRef.current.querySelector('img'); 
+                if (img) { const link = document.createElement('a'); link.href = img.src; link.download = 'qrcode.png'; link.click(); } 
+            };
 
             return (
                 <div className="min-h-screen flex flex-col font-sans">
@@ -971,6 +1039,22 @@
                             <IconWrapper name="check-circle" size={20} /><div><p className="font-bold">Salvo!</p><p className="text-sm">Dados guardados.</p></div>
                         </div>
                     )}
+                    
+                    {/* PLAYER DE RÁDIO PERSISTENTE - FORA DAS ABAS PARA NÃO PARAR */}
+                    <div style={{display: 'none'}}>
+                        <audio 
+                            ref={audioRef} 
+                            src="https://live.hunter.fm/gospel_stream?ag=mp3" 
+                            crossOrigin="anonymous"
+                            onPlay={() => setIsPlayingRadio(true)}
+                            onPause={() => setIsPlayingRadio(false)}
+                            onError={() => {
+                                console.log("Erro no stream de áudio");
+                                setIsPlayingRadio(false);
+                            }}
+                        ></audio>
+                    </div>
+
                     <header className="bg-red-800 text-white shadow-lg sticky top-0 z-50 no-print">
                         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
                             <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('home')}>
@@ -1021,8 +1105,17 @@
                                 </div>
                                 <div className={`w-full md:w-64 bg-gray-50 border-r p-4 overflow-y-auto transition-all duration-300 ease-in-out ${showBibleNav ? 'block' : 'hidden'} md:block`}>
                                     <div className="hidden md:block"><BackButton /></div>
-                                    <select value={selectedBook} onChange={(e) => {setSelectedBook(e.target.value); fetchChapter(e.target.value, 1)}} className="w-full p-2 mb-4 border rounded text-gray-800">{bibleBooks.map(b => <option key={b} value={b}>{b}</option>)}</select>
-                                    <div className="grid grid-cols-5 gap-1">{[...Array(50)].map((_, i) => (<button key={i} onClick={() => {fetchChapter(selectedBook, i+1); setShowBibleNav(false);}} className={`p-1 text-xs rounded ${selectedChapter===i+1?'bg-yellow-500 text-white':'bg-gray-200 text-gray-700'}`}>{i+1}</button>))}</div>
+                                    <select value={selectedBook} onChange={(e) => {
+                                        const newBook = e.target.value;
+                                        setSelectedBook(newBook);
+                                        setSelectedChapter(1); 
+                                        fetchChapter(newBook, 1);
+                                    }} className="w-full p-2 mb-4 border rounded text-gray-800">{bibleBooks.map(b => <option key={b} value={b}>{b}</option>)}</select>
+                                    <div className="grid grid-cols-5 gap-1">{[...Array(50)].map((_, i) => (<button key={i} onClick={() => {
+                                        setSelectedChapter(i+1);
+                                        fetchChapter(selectedBook, i+1); 
+                                        setShowBibleNav(false);
+                                    }} className={`p-1 text-xs rounded ${selectedChapter===i+1?'bg-yellow-500 text-white':'bg-gray-200 text-gray-700'}`}>{i+1}</button>))}</div>
                                     <div className="mt-4 pt-4 border-t"><label className="text-xs font-bold text-gray-500">VOZ</label><select className="w-full p-2 border rounded text-xs text-gray-800" onChange={(e)=>setSelectedVoiceIndex(e.target.value)}>{voices.map((v,k)=><option key={k} value={k}>{v.name.slice(0,20)}</option>)}</select></div>
                                 </div>
                                 <div className={`flex-1 p-8 overflow-y-auto relative bible-content-area ${showBibleNav ? 'hidden md:block' : 'block'}`}>
@@ -1536,17 +1629,6 @@
                                             }
                                         </button>
                                         
-                                        {/* Audio Element Hidden - Using a reliable HTTPS Gospel stream as default */}
-                                        <audio 
-                                            ref={audioRef} 
-                                            src="https://live.hunter.fm/gospel_stream?ag=mp3" 
-                                            crossOrigin="anonymous"
-                                            onError={() => {
-                                                alert("Erro ao carregar o stream de áudio. Tente novamente mais tarde.");
-                                                setIsPlayingRadio(false);
-                                            }}
-                                        ></audio>
-
                                         <div className="mt-8 pt-6 border-t border-gray-700 w-full">
                                             <p className="text-xs text-gray-400 mb-2">Procurando a Rádio Gospel Campinas?</p>
                                             <a 
