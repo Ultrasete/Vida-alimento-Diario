@@ -486,6 +486,7 @@
 
             // Estados Persistentes - BÍBLIA (HIGHLIGHTS)
             const [highlights, setHighlights] = usePersistentState('bibleHighlights', {});
+            const [activeHighlightColor, setActiveHighlightColor] = useState('#fef08a'); // Cor padrão (Amarelo)
 
             // ESTADOS JOGOS
             const [gameMode, setGameMode] = useState('menu'); // 'menu', 'quiz', 'memory', 'hangman'
@@ -879,32 +880,42 @@
             };
 
             // --- LÓGICA DE MARCA-TEXTO (HIGHLIGHT) ---
+            const highlightColors = [
+                { color: '#fef08a', name: 'Amarelo', class: 'bg-yellow-200' },
+                { color: '#bbf7d0', name: 'Verde', class: 'bg-green-200' },
+                { color: '#bfdbfe', name: 'Azul', class: 'bg-blue-200' },
+                { color: '#fbcfe8', name: 'Rosa', class: 'bg-pink-200' },
+                { color: '#e9d5ff', name: 'Roxo', class: 'bg-purple-200' },
+            ];
+
             const handleVerseMouseUp = (verseNum) => {
                 const selection = window.getSelection();
-                // Verifica se houve seleção de texto (mesmo que pequena)
-                if (selection && selection.toString().length > 0) {
-                    const key = `${selectedBook}-${selectedChapter}-${verseNum}`;
-                    
-                    setHighlights(prev => {
-                        const newHighlights = { ...prev };
-                        if (newHighlights[key]) {
-                            // Se já estiver marcado, remove
-                            delete newHighlights[key];
-                        } else {
-                            // Se não, adiciona a cor amarela
-                            newHighlights[key] = '#fef08a'; // bg-yellow-200
-                        }
-                        return newHighlights;
-                    });
-                    
-                    // Remove a seleção azul nativa do navegador para mostrar o amarelo
-                    selection.removeAllRanges();
-                }
+                // Verifica se houve seleção de texto OU se é um clique direto no versículo (para facilitar mobile)
+                // Permitimos marcar clicando no paragrafo todo se a intenção for estudo
+                
+                const key = `${selectedBook}-${selectedChapter}-${verseNum}`;
+                
+                setHighlights(prev => {
+                    const newHighlights = { ...prev };
+                    // Se já estiver marcado com a MESMA cor, remove (toggle off)
+                    if (newHighlights[key] === activeHighlightColor) {
+                        delete newHighlights[key];
+                    } else {
+                        // Se não estiver marcado ou for outra cor, aplica a cor atual
+                        newHighlights[key] = activeHighlightColor;
+                    }
+                    return newHighlights;
+                });
+                
+                // Remove a seleção azul nativa do navegador para mostrar o destaque
+                if (selection) selection.removeAllRanges();
             };
 
-            const isVerseHighlighted = (verseNum) => {
+            const getVerseHighlightStyle = (verseNum) => {
                 const key = `${selectedBook}-${selectedChapter}-${verseNum}`;
-                return highlights[key];
+                const color = highlights[key];
+                if (!color) return {};
+                return { backgroundColor: color, paddingLeft: '8px', borderLeft: '4px solid rgba(0,0,0,0.1)' };
             };
 
             const analyzeNames = () => {
@@ -1017,22 +1028,40 @@
                                 <div className={`flex-1 p-8 overflow-y-auto relative bible-content-area ${showBibleNav ? 'hidden md:block' : 'block'}`}>
                                     {loadingBible ? <div className="text-center mt-20 text-gray-500">Carregando...</div> : chapterContent && (
                                         <>
-                                            <div className="flex justify-between items-center mb-6 border-b pb-4">
+                                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b pb-4 gap-4">
                                                 <h2 className="text-3xl font-serif font-bold text-red-900">{chapterContent.book.name} {chapterContent.chapter.number}</h2>
-                                                <div className="flex gap-2">
-                                                    <span className="text-xs text-gray-400 flex items-center bg-gray-100 px-2 rounded">Selecione texto para marcar</span>
-                                                    <button onClick={toggleNarrator} className={`p-2 rounded-full ${isSpeaking?'bg-red-100 text-red-600':'bg-gray-100 text-gray-600'}`}><IconWrapper name={isSpeaking?'square':'volume-2'}/></button>
+                                                
+                                                <div className="flex flex-col items-end gap-2">
+                                                    {/* Seletor de Cor do Marca Texto */}
+                                                    <div className="flex items-center gap-2 bg-gray-100 p-2 rounded-lg">
+                                                        <span className="text-xs font-bold text-gray-500">Marcador:</span>
+                                                        {highlightColors.map((c) => (
+                                                            <button
+                                                                key={c.color}
+                                                                onClick={() => setActiveHighlightColor(c.color)}
+                                                                className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${activeHighlightColor === c.color ? 'border-gray-600 scale-110 shadow-sm' : 'border-transparent'}`}
+                                                                style={{ backgroundColor: c.color }}
+                                                                title={c.name}
+                                                            />
+                                                        ))}
+                                                    </div>
+                                                    
+                                                    <button onClick={toggleNarrator} className={`p-2 rounded-full flex items-center gap-2 text-sm font-bold transition-colors ${isSpeaking?'bg-red-100 text-red-600':'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                                                        <IconWrapper name={isSpeaking?'square':'volume-2'} size={16}/> {isSpeaking ? 'Parar Leitura' : 'Ouvir Capítulo'}
+                                                    </button>
                                                 </div>
                                             </div>
+                                            
                                             <div className="space-y-4 font-serif text-gray-800" style={{fontSize: fontSize}}>
                                                 {chapterContent.verses?.map(v => (
                                                     <p 
                                                         key={v.number} 
                                                         onMouseUp={() => handleVerseMouseUp(v.number)}
-                                                        className={`p-1 rounded transition-colors duration-300 cursor-text ${isVerseHighlighted(v.number) ? 'bg-yellow-200 shadow-sm border-l-4 border-yellow-400 pl-2' : 'hover:bg-gray-50'}`}
-                                                        title="Selecione o texto para marcar/desmarcar"
+                                                        style={getVerseHighlightStyle(v.number)}
+                                                        className="p-1 rounded transition-all duration-300 cursor-text hover:bg-gray-50 leading-relaxed"
+                                                        title="Selecione ou clique para marcar/desmarcar"
                                                     >
-                                                        <span className="text-yellow-600 font-bold text-xs mr-1 select-none">{v.number}</span>
+                                                        <span className="text-yellow-600 font-bold text-xs mr-2 select-none align-top">{v.number}</span>
                                                         {v.text}
                                                     </p>
                                                 ))}
