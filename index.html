@@ -2,7 +2,7 @@
 <html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sistema Vida - Alimento Diário</title>
     
     <!-- Carregar React e ReactDOM -->
@@ -115,6 +115,12 @@
             stroke-linecap: round;
         }
 
+        /* --- Estilos Financeiro Mobile --- */
+        input, select, button { touch-action: manipulation; }
+        .tap-target { min-height: 44px; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
         @media print {
             .no-print { display: none !important; }
             body * { visibility: hidden; }
@@ -152,48 +158,19 @@
             return [state, setState];
         }
 
-        // --- SISTEMA DE SOM GERAL ---
-        const playSoundEffect = (type) => {
-            try {
-                const now = Tone.now();
-                if (type === 'quiz_correct') {
-                    const osc = new Tone.Oscillator(600, "sine").toDestination();
-                    osc.frequency.exponentialRampToValueAtTime(1200, now + 0.1);
-                    osc.start().stop(now + 0.5);
-                } else if (type === 'quiz_wrong') {
-                    const osc = new Tone.Oscillator(150, "sawtooth").toDestination();
-                    osc.frequency.linearRampToValueAtTime(100, now + 0.3);
-                    osc.start().stop(now + 0.3);
-                } else if (type === 'quiz_win') {
-                    const synth = new Tone.PolySynth(Tone.Synth).toDestination();
-                    synth.triggerAttackRelease(["C4", "E4", "G4", "C5"], "8n");
-                } else if (type === 'hangman_correct') {
-                    const synth = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0, release: 0.1 } }).toDestination();
-                    synth.triggerAttackRelease('E5', '16n', now);
-                } else if (type === 'hangman_wrong') {
-                    const synth = new Tone.Synth({ oscillator: { type: 'square' }, envelope: { attack: 0.05, decay: 0.2, sustain: 0, release: 0.1 } }).toDestination();
-                    synth.triggerAttackRelease('A2', '8n', now);
-                } else if (type === 'hangman_win') {
-                    const synth = new Tone.Synth({ oscillator: { type: 'sine' }, envelope: { attack: 0.05, decay: 0.5, sustain: 0, release: 0.1 } }).toDestination();
-                    synth.triggerAttackRelease('C4', '8n', now);
-                    synth.triggerAttackRelease('E4', '8n', now + 0.1);
-                    synth.triggerAttackRelease('G4', '8n', now + 0.2);
-                    synth.triggerAttackRelease('C5', '8n', now + 0.3);
-                } else if (type === 'hangman_lose') {
-                    const synth = new Tone.Synth({ oscillator: { type: 'sine' } }).toDestination();
-                    synth.triggerAttackRelease('C4', '8n', now);
-                    synth.triggerAttackRelease('Eb4', '8n', now + 0.1);
-                    synth.triggerAttackRelease('Gb4', '8n', now + 0.2);
-                    synth.triggerAttackRelease('A4', '8n', now + 0.3);
-                }
-            } catch (e) { console.error("Erro audio", e); }
-        };
+        // --- HELPERS GERAIS ---
+        function formatarEMV(id, value) { const length = ('00' + value.length).slice(-2); return `${id}${length}${value}`; }
+        function simplificarTexto(text) { return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/g, ''); }
+        function crc16(data) { let crc = 0xFFFF; for (let i = 0; i < data.length; i++) { crc ^= data.charCodeAt(i) << 8; for (let j = 0; j < 8; j++) { crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1; } } return ('0000' + (crc & 0xFFFF).toString(16).toUpperCase()).slice(-4); }
+        const formatDateKey = (date) => date.toISOString().split('T')[0];
+        const formatDateDisplay = (date) => date.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
-        // --- ÍCONES SVG ---
+        // --- ÍCONES SVG GERAIS (Sistema Vida) ---
         const icons = {
             'home': <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />,
             'book-open': <><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></>,
             'heart': <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>,
+            'whatsapp': <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>,
             'dollar-sign': <><line x1="12" x2="12" y1="2" y2="22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></>,
             'activity': <path d="M22 12h-4l-3 9L9 3l-3 9H2" />,
             'sun': <><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></>,
@@ -232,25 +209,875 @@
             'trash-2': <><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></>,
             'trending-up': <><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></>,
             'trending-down': <><polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" /></>,
-            'credit-card': <><rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" /></>
+            'credit-card': <><rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" /></>,
+            'whatsapp': <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
         };
 
         const IconWrapper = ({ name, size = 24, className = "" }) => {
             const content = icons[name] || null;
             if (!content) return null;
             return (
-                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" className={className} style={{ display: 'inline-block', verticalAlign: 'middle' }}>
                     {content}
                 </svg>
             );
         };
 
-        // --- HELPERS ---
-        function formatarEMV(id, value) { const length = ('00' + value.length).slice(-2); return `${id}${length}${value}`; }
-        function simplificarTexto(text) { return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w\s]/g, ''); }
-        function crc16(data) { let crc = 0xFFFF; for (let i = 0; i < data.length; i++) { crc ^= data.charCodeAt(i) << 8; for (let j = 0; j < 8; j++) { crc = (crc & 0x8000) ? (crc << 1) ^ 0x1021 : crc << 1; } } return ('0000' + (crc & 0xFFFF).toString(16).toUpperCase()).slice(-4); }
-        const formatDateKey = (date) => date.toISOString().split('T')[0];
-        const formatDateDisplay = (date) => date.toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        // --- SUB-MÓDULO FINANCEIRO (DA OUTRA APP) ---
+        // Ícones Específicos do Financeiro (Estilo Feather)
+        const finIcons = {
+            'dollar-sign': <><line x1="12" x2="12" y1="2" y2="22" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></>,
+            'trending-up': <><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></>,
+            'trending-down': <><polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" /></>,
+            'credit-card': <><rect x="1" y="4" width="22" height="16" rx="2" ry="2" /><line x1="1" y1="10" x2="23" y2="10" /></>,
+            'briefcase': <><rect width="20" height="14" x="2" y="7" rx="2" ry="2" /><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /></>,
+            'users': <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></>,
+            'trash-2': <><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" /></>,
+            'plus': <><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></>,
+            'download': <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" /></>,
+            'refresh-cw': <><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></>,
+            'menu': <><line x1="4" x2="20" y1="12" y2="12" /><line x1="4" x2="20" y1="6" y2="6" /><line x1="4" x2="20" y1="18" y2="18" /></>,
+            'calendar': <><rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></>,
+            'list': <><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></>,
+            'pie-chart': <><path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path><path d="M22 12A10 10 0 0 0 12 2v10z"></path></>,
+            'lock': <><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></>,
+            'unlock': <><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 9.9-1"></path></>,
+            'file-text': <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></>,
+            'clock': <circle cx="12" cy="12" r="10"></circle>,
+            'check': <polyline points="20 6 9 17 4 12"></polyline>,
+            'filter': <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>,
+            'edit-2': <><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></>
+        };
+
+        const FinIconWrapper = ({ name, size = 20, className = "" }) => (
+            <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} style={{ display: 'inline-block', verticalAlign: 'middle' }}>
+                {finIcons[name] || null}
+            </svg>
+        );
+
+        const SimplePieChart = ({ data, onSliceClick }) => {
+            const validData = data.filter(d => d.value > 0);
+            const total = validData.reduce((acc, item) => acc + item.value, 0);
+            
+            if (total === 0 && data.some(d => d.value !== 0)) {
+                return <div className="text-center text-gray-400 p-4 text-sm">Gráfico indisponível para valores negativos/zerados.</div>;
+            }
+            if (total === 0) return <div className="text-center text-gray-400 p-4 text-sm">Sem dados para o gráfico</div>;
+            
+            let cumulativeAngle = 0;
+
+            return (
+                <div className="flex flex-col items-center bg-white p-6 rounded-xl shadow-lg border border-gray-100 mt-8 mb-8">
+                    <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2"><FinIconWrapper name="pie-chart" className="text-purple-500"/> Distribuição Financeira</h3>
+                    <p className="text-xs text-gray-400 mb-4">Toque nas fatias para ver detalhes</p>
+                    <div className="relative w-48 h-48">
+                        <svg viewBox="-1 -1 2 2" style={{ transform: 'rotate(-90deg)', width: '100%', height: '100%' }}>
+                            {validData.map((slice, index) => {
+                                const startAngle = cumulativeAngle;
+                                const sliceAngle = (slice.value / total) * 2 * Math.PI;
+                                cumulativeAngle += sliceAngle;
+
+                                const x1 = Math.cos(startAngle);
+                                const y1 = Math.sin(startAngle);
+                                const x2 = Math.cos(startAngle + sliceAngle);
+                                const y2 = Math.sin(startAngle + sliceAngle);
+
+                                const largeArcFlag = sliceAngle > Math.PI ? 1 : 0;
+                                
+                                if (validData.length === 1) {
+                                    return <circle 
+                                        key={index} 
+                                        cx="0" cy="0" r="1" 
+                                        fill={slice.color} 
+                                        onClick={() => onSliceClick && onSliceClick(slice.label)}
+                                        style={{ cursor: 'pointer' }}
+                                    />;
+                                }
+
+                                const pathData = [
+                                    `M 0 0`,
+                                    `L ${x1} ${y1}`,
+                                    `A 1 1 0 ${largeArcFlag} 1 ${x2} ${y2}`,
+                                    `Z`
+                                ].join(' ');
+
+                                return (
+                                    <path 
+                                        key={index} 
+                                        d={pathData} 
+                                        fill={slice.color} 
+                                        stroke="white" 
+                                        strokeWidth="0.05" 
+                                        onClick={() => onSliceClick && onSliceClick(slice.label)}
+                                        style={{ cursor: 'pointer' }}
+                                    />
+                                );
+                            })}
+                        </svg>
+                    </div>
+                    <div className="mt-6 w-full grid grid-cols-1 gap-3">
+                        {data.map((item, i) => (
+                            <div 
+                                key={i} 
+                                className="flex items-center justify-between p-2 rounded bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+                                onClick={() => onSliceClick && onSliceClick(item.label)}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <div className="w-3 h-3 rounded-full shadow-sm" style={{backgroundColor: item.color}}></div>
+                                    <span className="text-gray-600 text-xs font-bold uppercase">{item.label}</span>
+                                </div>
+                                <span className="font-bold text-gray-800 text-sm">R$ {item.value.toFixed(2)}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const FinancialModule = ({ onBack }) => {
+            // ESTADOS GLOBAIS
+            const [view, setView] = useState('transactions'); 
+            
+            // ESTADOS DE DADOS
+            const [financialEntries, setFinancialEntries] = usePersistentState('financialEntries_v4', []);
+            const [userAssets, setUserAssets] = usePersistentState('userAssets_v3', []);
+            const [userLoans, setUserLoans] = usePersistentState('userLoans_v3', []);
+            const [userCards, setUserCards] = usePersistentState('userCards_v3', []);
+            const [userInvestments, setUserInvestments] = usePersistentState('userInvestments_v1', []);
+            const [userDebts, setUserDebts] = usePersistentState('userDebts_v3', []); 
+            const [expandedCardId, setExpandedCardId] = useState(null);
+            const [expandedDebtId, setExpandedDebtId] = useState(null); // Corrigido: estado que faltava
+            const [historyFilter, setHistoryFilter] = useState('all'); 
+            
+            // ESTADO DE EDIÇÃO
+            const [editingId, setEditingId] = useState(null); 
+
+            // ESTADOS DE SENHA
+            const [appPassword, setAppPassword] = usePersistentState('appPassword', ''); 
+            const [isLocked, setIsLocked] = useState(false); 
+            const [pinInput, setPinInput] = useState(''); 
+            const [newPasswordInput, setNewPasswordInput] = useState(''); 
+
+            // FORMS
+            const [finForm, setFinForm] = useState({ 
+                date: new Date().toISOString().split('T')[0], 
+                desc: '', value: '', type: 'expense', category: 'Outros', method: 'Dinheiro', installments: 1, cardId: '' 
+            });
+            const [assetForm, setAssetForm] = useState({ name: '', value: '' });
+            const [loanForm, setLoanForm] = useState({ name: '', desc: '', value: '', date: '' });
+            const [cardForm, setCardForm] = useState({ name: '', limit: '', dueDay: '' });
+            const [investmentForm, setInvestmentForm] = useState({ type: 'Poupança', name: '', value: '' });
+            const [debtForm, setDebtForm] = useState({ name: '', totalValue: '', installments: '', startDate: '', dueDay: '' });
+
+            // EFEITO PARA FORÇAR O BLOQUEIO
+            useEffect(() => {
+                const savedPass = localStorage.getItem('appPassword');
+                if (savedPass && savedPass !== '""') { 
+                     setIsLocked(true);
+                }
+            }, []);
+
+            // CÁLCULOS FINANCEIROS
+            const summary = useMemo(() => {
+                const realizedEntries = financialEntries.filter(e => e.status === 'paid');
+                const income = realizedEntries.filter(e => e.type === 'income').reduce((acc, curr) => acc + curr.value, 0);
+                const expense = realizedEntries.filter(e => e.type === 'expense').reduce((acc, curr) => acc + curr.value, 0);
+                const pendingExpense = financialEntries.filter(e => e.status === 'pending' && e.type === 'expense').reduce((acc, curr) => acc + curr.value, 0);
+                return { income, expense, balance: income - expense, pendingExpense };
+            }, [financialEntries]);
+
+            // CÁLCULOS GRÁFICO
+            const chartData = useMemo(() => {
+                const totalReceivable = userLoans.reduce((acc, curr) => acc + curr.value, 0);
+                const totalCardDebt = financialEntries
+                    .filter(e => e.method === 'Cartão Crédito' && e.type === 'expense')
+                    .reduce((acc, curr) => acc + curr.value, 0);
+                const currentBalance = summary.balance;
+                return [
+                    { label: 'Saldo em Caixa', value: currentBalance, color: '#10B981' }, 
+                    { label: 'A Receber', value: totalReceivable, color: '#F59E0B' }, 
+                    { label: 'Gasto c/ Cartão', value: totalCardDebt, color: '#EF4444' } 
+                ];
+            }, [userLoans, financialEntries, summary.balance]);
+
+            // LÓGICA SENHA
+            const handleUnlock = () => { if (pinInput === appPassword) { setIsLocked(false); setPinInput(''); } else { alert("Senha incorreta!"); setPinInput(''); } };
+            const handleSetPassword = () => { if (newPasswordInput.length < 4) return alert("Mínimo 4 dígitos."); setAppPassword(newPasswordInput); setNewPasswordInput(''); alert("Senha definida!"); };
+            const handleRemovePassword = () => { if (confirm("Remover proteção?")) { setAppPassword(''); alert("Senha removida."); } };
+
+            // LÓGICA NAVEGAÇÃO GRÁFICO
+            const handlePieClick = (label) => {
+                if (label === 'Saldo em Caixa') setView('transactions');
+                else if (label === 'A Receber') setView('loans');
+                else if (label === 'Gasto c/ Cartão') setView('cards');
+            };
+
+            // LÓGICA FINANCEIRA AUXILIAR
+            const getTotalCardUsage = (cardId) => {
+                return financialEntries.filter(e => e.method === 'Cartão Crédito' && e.cardId === cardId && e.type === 'expense').reduce((acc, curr) => acc + curr.value, 0);
+            };
+
+            const getCurrentInvoiceValue = (cardId) => {
+                const now = new Date();
+                const currentMonth = now.getMonth(); 
+                const currentYear = now.getFullYear();
+                return financialEntries.filter(e => {
+                        if (e.method !== 'Cartão Crédito' || e.cardId !== cardId || e.type !== 'expense') return false;
+                        const [y, m, d] = e.date.split('-').map(Number);
+                        return (m - 1) === currentMonth && y === currentYear;
+                    }).reduce((acc, curr) => acc + curr.value, 0);
+            };
+
+            // ADD FLUXO
+            const handleAddEntry = () => {
+                if (!finForm.desc || !finForm.value) return alert("Preencha descrição e valor.");
+                if (finForm.method === 'Cartão Crédito' && !finForm.cardId && userCards.length > 0) return alert("Selecione o cartão.");
+
+                const totalValue = parseFloat(finForm.value);
+
+                // LÓGICA DE EDIÇÃO
+                if (editingId) {
+                    if (!window.confirm("Confirma a alteração deste lançamento?")) return;
+                    
+                    setFinancialEntries(financialEntries.map(entry => {
+                        if (entry.id === editingId) {
+                            return {
+                                ...entry,
+                                date: finForm.date,
+                                desc: finForm.desc,
+                                value: totalValue,
+                                type: finForm.type,
+                                category: finForm.category,
+                                method: finForm.method,
+                                cardId: finForm.method === 'Cartão Crédito' ? finForm.cardId : null
+                                // Mantém o status original
+                            };
+                        }
+                        return entry;
+                    }));
+                    setEditingId(null); // Sai do modo edição
+                    setFinForm({ ...finForm, desc: '', value: '', installments: 1 }); // Limpa form
+                    alert("Registo atualizado!");
+                    return;
+                }
+
+                // LÓGICA DE ADIÇÃO (NOVO)
+                const numInstallments = parseInt(finForm.installments) || 1;
+                const installmentValue = totalValue / numInstallments;
+                const newEntries = [];
+                
+                let startDate; 
+                
+                if (finForm.method === 'Cartão Crédito' && finForm.cardId) {
+                    const selectedCard = userCards.find(c => c.id === finForm.cardId);
+                    if (selectedCard && selectedCard.dueDay) {
+                        const dueDay = parseInt(selectedCard.dueDay);
+                        const [y, m, d] = finForm.date.split('-').map(Number);
+                        // Ajuste para mês 0-indexado
+                        const purchaseDate = new Date(y, m - 1, d);
+                        
+                        let nextMonth = purchaseDate.getMonth() + 1;
+                        let year = purchaseDate.getFullYear();
+                        if (nextMonth > 11) { nextMonth = 0; year++; }
+                        
+                        startDate = new Date(year, nextMonth, dueDay);
+                    } else {
+                         // Fallback
+                         const [y, m, d] = finForm.date.split('-').map(Number);
+                         startDate = new Date(y, m - 1, d);
+                         startDate.setMonth(startDate.getMonth() + 1);
+                    }
+                } else if (finForm.method === 'Carnê/Boleto') {
+                    const [y, m, d] = finForm.date.split('-').map(Number);
+                    startDate = new Date(y, m - 1, d);
+                } else {
+                    const [y, m, d] = finForm.date.split('-').map(Number);
+                    startDate = new Date(y, m - 1, d);
+                }
+
+                for (let i = 0; i < numInstallments; i++) {
+                    const entryDate = new Date(startDate);
+                    
+                    // Incrementa meses
+                    if (['Cartão Crédito', 'Carnê/Boleto'].includes(finForm.method)) {
+                        entryDate.setMonth(startDate.getMonth() + i);
+                    } else if (i > 0) {
+                        entryDate.setMonth(startDate.getMonth() + i);
+                    }
+                    
+                    const y = entryDate.getFullYear();
+                    const m = String(entryDate.getMonth() + 1).padStart(2, '0');
+                    const d = String(entryDate.getDate()).padStart(2, '0');
+                    const dateStr = `${y}-${m}-${d}`;
+
+                    let initialStatus = 'pending';
+                    const today = new Date(); today.setHours(0,0,0,0);
+                    const checkDate = new Date(entryDate); checkDate.setHours(0,0,0,0);
+                    
+                    if (['Dinheiro', 'Cartão Débito', 'Pix'].includes(finForm.method) && checkDate <= today) {
+                        initialStatus = 'paid';
+                    }
+
+                    newEntries.push({
+                        id: Date.now() + i,
+                        date: dateStr,
+                        desc: numInstallments > 1 ? `${finForm.desc} (${i + 1}/${numInstallments})` : finForm.desc,
+                        value: installmentValue,
+                        type: finForm.type,
+                        category: finForm.category,
+                        method: finForm.method,
+                        cardId: finForm.method === 'Cartão Crédito' ? finForm.cardId : null,
+                        status: initialStatus
+                    });
+                }
+                
+                setFinancialEntries([...newEntries, ...financialEntries]);
+                setFinForm({ ...finForm, desc: '', value: '', installments: 1 });
+                alert("Lançamento(s) adicionado(s) ao Fluxo!");
+            };
+
+            const handleEditEntry = (entry) => {
+                setEditingId(entry.id);
+                setFinForm({
+                    date: entry.date, desc: entry.desc, value: entry.value, type: entry.type,
+                    category: entry.category, method: entry.method, installments: 1, cardId: entry.cardId || ''
+                });
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            };
+            const cancelEdit = () => { setEditingId(null); setFinForm({ ...finForm, desc: '', value: '', installments: 1 }); };
+            
+            const handleAddAsset = () => { if (!assetForm.name || !assetForm.value) return alert("Preencha campos."); setUserAssets([...userAssets, { id: Date.now(), ...assetForm, value: parseFloat(assetForm.value) }]); setAssetForm({ name: '', value: '' }); };
+            
+            // --- NOVO HANDLE ADD LOAN (INTEGRADO AO FLUXO) ---
+            const handleAddLoan = () => {
+                if (!loanForm.name || !loanForm.value || !loanForm.date) return alert("Preencha todos os campos (Nome, Valor, Data).");
+                
+                const newLoanId = Date.now().toString();
+                const loanValue = parseFloat(loanForm.value);
+                
+                // 1. Cria o registro na aba 'Receber' (Controle Geral)
+                const newLoan = { 
+                    id: newLoanId, 
+                    ...loanForm, 
+                    value: loanValue 
+                };
+
+                // 2. Cria automaticamente a entrada no Fluxo de Caixa (Pendente)
+                const newEntry = {
+                    id: Date.now() + 1, // ID diferente do loan
+                    date: loanForm.date,
+                    desc: `Recebimento: ${loanForm.name} - ${loanForm.desc}`,
+                    value: loanValue,
+                    type: 'income',      // Tipo Receita
+                    category: 'Empréstimos', // Categoria Automática
+                    method: 'Dinheiro',  // Método padrão (pode ser editado depois)
+                    status: 'pending',   // Entra como pendente (a receber)
+                    loanId: newLoanId    // Link para permitir exclusão conjunta
+                };
+
+                setUserLoans([...userLoans, newLoan]);
+                setFinancialEntries([newEntry, ...financialEntries]);
+                
+                setLoanForm({ name: '', desc: '', value: '', date: '' });
+                alert("Registrado em 'Receber' e adicionado ao Fluxo como Pendente!");
+            };
+
+            const handleAddCard = () => { if (!cardForm.name || !cardForm.limit || !cardForm.dueDay) return alert("Preencha campos."); setUserCards([...userCards, { id: Date.now().toString(), ...cardForm, limit: parseFloat(cardForm.limit), dueDay: cardForm.dueDay }]); setCardForm({ name: '', limit: '', dueDay: '' }); };
+            const handleAddInvestment = () => { if (!investmentForm.name || !investmentForm.value) return alert("Preencha campos."); setUserInvestments([...userInvestments, { id: Date.now(), ...investmentForm, value: parseFloat(investmentForm.value) }]); setInvestmentForm({ type: 'Poupança', name: '', value: '' }); };
+
+            const handleAddDebt = () => {
+                if (!debtForm.name || !debtForm.totalValue || !debtForm.installments || !debtForm.dueDay) return alert("Preencha todos os campos.");
+                
+                const newDebtId = Date.now().toString();
+                const installments = parseInt(debtForm.installments);
+                const totalValue = parseFloat(debtForm.totalValue);
+                const installmentValue = totalValue / installments;
+                const dueDay = parseInt(debtForm.dueDay);
+                
+                const today = new Date();
+                let startMonth = today.getMonth();
+                let startYear = today.getFullYear();
+                
+                if (today.getDate() >= dueDay) {
+                    startMonth++;
+                    if(startMonth > 11) { startMonth = 0; startYear++; }
+                }
+                
+                const debtStartDate = new Date(startYear, startMonth, dueDay);
+                const newEntries = [];
+
+                for (let i = 0; i < installments; i++) {
+                    const entryDate = new Date(debtStartDate);
+                    entryDate.setMonth(debtStartDate.getMonth() + i);
+                    
+                    const y = entryDate.getFullYear();
+                    const m = String(entryDate.getMonth() + 1).padStart(2, '0');
+                    const d = String(entryDate.getDate()).padStart(2, '0');
+                    
+                    newEntries.push({
+                        id: Date.now() + i,
+                        date: `${y}-${m}-${d}`,
+                        desc: `${debtForm.name} (${i + 1}/${installments})`,
+                        value: installmentValue,
+                        type: 'expense',
+                        category: 'Dívida/Financ.',
+                        method: 'Carnê/Boleto',
+                        status: 'pending',
+                        debtId: newDebtId 
+                    });
+                }
+
+                setUserDebts([...userDebts, { 
+                    id: newDebtId, 
+                    ...debtForm, 
+                    totalValue: totalValue,
+                    installments: installments
+                }]);
+
+                setFinancialEntries([...newEntries, ...financialEntries]);
+                
+                setDebtForm({ name: '', totalValue: '', installments: '', startDate: '', dueDay: '' });
+                alert("Dívida cadastrada e parcelas geradas no Fluxo de Caixa!");
+            };
+
+            const deleteItem = (id, list, setList) => { if(confirm("Excluir item?")) setList(list.filter(i => i.id !== id)); };
+            
+            // --- NOVA FUNÇÃO DE LIXEIRA INTELIGENTE ---
+            const handleTrashClick = (entry) => {
+                if (entry.status === 'paid') {
+                    if (confirm("Ocultar item do histórico? O valor continuará contabilizado no Saldo. (Para apagar definitivamente, vá em Configurações > Segurança)")) {
+                        // Soft delete: apenas marca como oculto, mas mantem no array
+                        setFinancialEntries(financialEntries.map(e => e.id === entry.id ? { ...e, hidden: true } : e));
+                    }
+                } else {
+                    // Se for pendente, apaga de verdade pois não afeta saldo realizado
+                    if (confirm("Excluir lançamento pendente permanentemente?")) {
+                        setFinancialEntries(financialEntries.filter(e => e.id !== entry.id));
+                    }
+                }
+            };
+            
+            // --- NOVA FUNÇÃO DE EXCLUSÃO INDIVIDUAL DO HISTÓRICO OCULTO ---
+            const deleteHiddenItem = (id) => {
+                if(confirm("Tem certeza? Isso apagará este item definitivamente e ALTERARÁ o seu Saldo.")) {
+                    setFinancialEntries(financialEntries.filter(e => e.id !== id));
+                }
+            };
+
+            const clearHiddenItems = () => {
+                const count = financialEntries.filter(e => e.hidden).length;
+                if (count === 0) return alert("Não há itens ocultos.");
+                if(confirm(`Tem certeza? Isso apagará definitivamente ${count} itens ocultos e ALTERARÁ o seu Saldo atual. Essa ação não pode ser desfeita.`)) {
+                    setFinancialEntries(financialEntries.filter(e => !e.hidden));
+                    alert("Itens apagados e saldo recalculado.");
+                }
+            };
+
+            const deleteDebt = (id) => { if(confirm("Apagar dívida e todas as parcelas pendentes?")) { setUserDebts(userDebts.filter(d => d.id !== id)); setFinancialEntries(financialEntries.filter(e => !(e.debtId === id && e.status === 'pending'))); } };
+            
+            // --- NOVA FUNÇÃO PARA APAGAR RECEBÍVEIS (E REMOVER DO FLUXO) ---
+            const deleteLoan = (id) => {
+                if(confirm("Apagar registro em 'Receber' e remover a entrada pendente do Fluxo?")) {
+                    setUserLoans(userLoans.filter(l => l.id !== id));
+                    // Remove do fluxo apenas se ainda estiver 'pending'. Se já pagou, mantém o histórico.
+                    setFinancialEntries(financialEntries.filter(e => !(e.loanId === id && e.status === 'pending')));
+                }
+            };
+
+            const toggleEntryStatus = (id) => {
+                setFinancialEntries(financialEntries.map(entry => {
+                    if (entry.id === id) return { ...entry, status: entry.status === 'paid' ? 'pending' : 'paid' };
+                    return entry;
+                }));
+            };
+
+            const exportData = () => { const dataStr = JSON.stringify({ financialEntries, userAssets, userLoans, userCards, userInvestments, userDebts }, null, 2); const blob = new Blob([dataStr], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `backup_financeiro_${new Date().toISOString().split('T')[0]}.json`; document.body.appendChild(link); link.click(); document.body.removeChild(link); };
+            const importData = (e) => { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (evt) => { try { const data = JSON.parse(evt.target.result); if (confirm("Restaurar backup?")) { if(data.financialEntries) setFinancialEntries(data.financialEntries); if(data.userAssets) setUserAssets(data.userAssets); if(data.userLoans) setUserLoans(data.userLoans); if(data.userCards) setUserCards(data.userCards); if(data.userInvestments) setUserInvestments(data.userInvestments); if(data.userDebts) setUserDebts(data.userDebts); alert("Sucesso!"); } } catch { alert("Erro."); } }; reader.readAsText(file); e.target.value = ''; };
+
+            const getCardName = (cardId) => { const card = userCards.find(c => c.id === cardId); return card ? card.name : 'Cartão Excluído'; };
+            const toggleCardDetails = (cardId) => { setExpandedCardId(expandedCardId === cardId ? null : cardId); };
+            const isOverdue = (dateStr) => { if (!dateStr) return false; const [y, m, d] = dateStr.split('-').map(Number); const date = new Date(y, m-1, d); const today = new Date(); today.setHours(0,0,0,0); return date < today; };
+            
+            const getDebtProgress = (debtId) => {
+                const debtEntries = financialEntries.filter(e => e.debtId === debtId);
+                const paidCount = debtEntries.filter(e => e.status === 'paid').length;
+                const totalEntries = debtEntries.length > 0 ? debtEntries.length : 1;
+                return { paid: paidCount, total: totalEntries };
+            };
+
+            const filteredEntries = useMemo(() => {
+                return financialEntries.filter(entry => {
+                    if (entry.hidden) return false; // Esconde os itens "soft deleted"
+                    if (historyFilter === 'all') return true;
+                    if (historyFilter === 'paid') return entry.status === 'paid';
+                    if (historyFilter === 'pending') return entry.status === 'pending';
+                    return true;
+                });
+            }, [financialEntries, historyFilter]);
+
+            if (isLocked) {
+                return ( <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white p-4 animate-fadeIn"> <div className="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-sm text-center"> <div className="mb-6 text-yellow-400"><FinIconWrapper name="lock" size={64} /></div> <h2 className="text-2xl font-bold mb-2">Agenda Bloqueada</h2> <p className="text-gray-400 mb-6 text-sm">Proteção Ativa.</p> <input type="password" value={pinInput} onChange={(e) => setPinInput(e.target.value)} className="w-full p-4 text-center text-2xl bg-gray-700 rounded-lg border border-gray-600 text-white mb-4 tracking-widest outline-none focus:border-yellow-500 transition-colors" placeholder="****" maxLength="6" inputMode="numeric" /> <button onClick={handleUnlock} className="w-full bg-yellow-500 text-gray-900 font-bold py-3 rounded-lg hover:bg-yellow-400 transition-transform active:scale-95">Desbloquear</button> </div> </div> );
+            }
+
+            return (
+                <div className="flex flex-col bg-gray-100 min-h-screen">
+                    <header className="bg-red-800 text-white p-4 shadow-lg sticky top-0 z-50">
+                        <div className="container mx-auto flex justify-between items-center">
+                            <h1 className="text-xl font-bold flex items-center gap-2"><FinIconWrapper name="dollar-sign" className="text-yellow-400" size={24}/> Agenda Financeira</h1>
+                            <div className="flex gap-2">
+                                <button onClick={onBack} className="p-2 bg-red-900 rounded hover:bg-red-700 font-bold text-xs uppercase flex items-center gap-1">Voltar</button>
+                                <button onClick={() => setView('settings')} className="p-2 bg-red-700 rounded hover:bg-red-600"><FinIconWrapper name="lock" size={20} /></button>
+                                <button onClick={exportData} className="p-2 bg-red-700 rounded hover:bg-red-600"><FinIconWrapper name="download"/></button>
+                                <label className="p-2 bg-red-700 rounded hover:bg-red-600 cursor-pointer"><input type="file" onChange={importData} className="hidden" accept=".json" /><FinIconWrapper name="refresh-cw"/></label>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div className="bg-white shadow px-4 pt-4 pb-2 sticky top-16 z-40">
+                        <div className="flex space-x-1 overflow-x-auto hide-scrollbar">
+                            <button onClick={() => setView('transactions')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${view === 'transactions' ? 'bg-red-100 text-red-800' : 'text-gray-500 hover:bg-gray-50'}`}>Fluxo</button>
+                            <button onClick={() => setView('cards')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${view === 'cards' ? 'bg-purple-100 text-purple-800' : 'text-gray-500 hover:bg-gray-50'}`}>Cartões</button>
+                            <button onClick={() => setView('investments')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${view === 'investments' ? 'bg-teal-100 text-teal-800' : 'text-gray-500 hover:bg-gray-50'}`}>Invest.</button>
+                            <button onClick={() => setView('debts')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${view === 'debts' ? 'bg-indigo-100 text-indigo-800' : 'text-gray-500 hover:bg-gray-50'}`}>Dívidas</button>
+                            <button onClick={() => setView('assets')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${view === 'assets' ? 'bg-blue-100 text-blue-800' : 'text-gray-500 hover:bg-gray-50'}`}>Bens</button>
+                            <button onClick={() => setView('loans')} className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold whitespace-nowrap transition-colors ${view === 'loans' ? 'bg-orange-100 text-orange-800' : 'text-gray-500 hover:bg-gray-50'}`}>Receber</button>
+                        </div>
+                    </div>
+
+                    <main className="container mx-auto p-4 flex-grow animate-fadeIn">
+                        
+                        {view === 'settings' && (
+                            <div className="space-y-6">
+                                <div className="bg-white p-6 rounded-xl shadow border border-gray-100 text-center">
+                                    <div className="mb-4 text-gray-600"><FinIconWrapper name="lock" size={48} className="mx-auto text-gray-400"/></div>
+                                    <h3 className="font-bold text-xl text-gray-800 mb-2">Segurança</h3>
+                                    {appPassword ? (
+                                        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                                            <p className="text-green-700 font-bold mb-4">✓ Proteção Ativa</p>
+                                            <button onClick={handleRemovePassword} className="w-full bg-red-500 text-white py-2 rounded font-bold hover:bg-red-600">Remover Senha</button>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            <input type="password" placeholder="Nova Senha (mín. 4)" className="w-full p-3 border rounded-lg text-center text-lg tracking-widest bg-gray-50" value={newPasswordInput} onChange={(e) => setNewPasswordInput(e.target.value)} inputMode="numeric"/>
+                                            <button onClick={handleSetPassword} className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700">Ativar Proteção</button>
+                                        </div>
+                                    )}
+
+                                    {/* ÁREA DE LIMPEZA DE HISTÓRICO OCULTO */}
+                                    {financialEntries.filter(e => e.hidden).length > 0 && (
+                                        <div className="bg-orange-50 p-4 rounded-lg border border-orange-200 mt-6 text-left">
+                                            <h4 className="font-bold text-orange-800 mb-2 flex items-center gap-2"><FinIconWrapper name="trash-2" size={16}/> Histórico Oculto</h4>
+                                            <p className="text-sm text-orange-700 mb-3">
+                                                Existem <strong>{financialEntries.filter(e => e.hidden).length}</strong> itens pagos que foram ocultados da lista principal, mas <strong>ainda estão somando no seu Saldo</strong>.
+                                            </p>
+                                            
+                                            {/* LISTA DETALHADA PARA EXCLUSÃO INDIVIDUAL */}
+                                            <ul className="mt-3 space-y-2 max-h-60 overflow-y-auto mb-4">
+                                                {financialEntries.filter(e => e.hidden).map(entry => (
+                                                    <li key={entry.id} className="flex justify-between items-center bg-white p-2 rounded border border-orange-100 shadow-sm">
+                                                         <div>
+                                                             <div className="font-bold text-gray-700 text-xs">{entry.desc}</div>
+                                                             <div className="text-[10px] text-gray-500">{new Date(entry.date).toLocaleDateString('pt-BR')} • R$ {entry.value.toFixed(2)}</div>
+                                                         </div>
+                                                         <button onClick={() => deleteHiddenItem(entry.id)} className="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 border border-red-200 rounded bg-red-50">
+                                                             Apagar
+                                                         </button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+
+                                            <button onClick={clearHiddenItems} className="w-full bg-orange-600 text-white py-2 rounded font-bold hover:bg-orange-700 text-sm">
+                                                Limpar Todos Definitivamente (Alterará o Saldo)
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'transactions' && (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-3 gap-2 text-center">
+                                    <div className="bg-green-100 p-3 rounded-xl border border-green-200">
+                                        <div className="text-[10px] font-bold text-green-700 uppercase tracking-wide">Entradas</div>
+                                        <div className="text-sm font-bold text-green-800">R$ {summary.income.toFixed(2)}</div>
+                                    </div>
+                                    <div className="bg-red-100 p-3 rounded-xl border border-red-200">
+                                        <div className="text-[10px] font-bold text-red-700 uppercase tracking-wide">Saídas</div>
+                                        <div className="text-sm font-bold text-red-800">R$ {summary.expense.toFixed(2)}</div>
+                                    </div>
+                                    <div className={`p-3 rounded-xl border-l-4 shadow-sm bg-white ${summary.balance >= 0 ? 'border-green-500' : 'border-red-500'}`}>
+                                        <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Saldo</div>
+                                        <div className={`text-sm font-bold ${summary.balance >= 0 ? 'text-gray-800' : 'text-red-600'}`}>R$ {summary.balance.toFixed(2)}</div>
+                                    </div>
+                                </div>
+                                {summary.pendingExpense > 0 && <div className="bg-yellow-50 p-2 rounded border border-yellow-200 text-center text-xs text-yellow-700 font-bold">A Pagar (Pendente): R$ {summary.pendingExpense.toFixed(2)}</div>}
+
+                                <div className="bg-white p-4 rounded-xl shadow border border-gray-100">
+                                    <h3 className="font-bold text-gray-700 mb-3 text-sm flex justify-between items-center">
+                                        {editingId ? 'Editar' : 'Nova Movimentação'}
+                                        {editingId && <button onClick={cancelEdit} className="text-xs text-red-500 underline">Cancelar</button>}
+                                    </h3>
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <input type="date" className="w-full p-2 border rounded text-sm bg-gray-50" value={finForm.date} onChange={e => setFinForm({...finForm, date: e.target.value})} />
+                                            <input type="number" placeholder="Valor (R$)" className="w-full p-2 border rounded text-sm bg-gray-50" value={finForm.value} onChange={e => setFinForm({...finForm, value: e.target.value})} />
+                                        </div>
+                                        <input type="text" placeholder="Descrição" className="w-full p-2 border rounded text-sm bg-gray-50" value={finForm.desc} onChange={e => setFinForm({...finForm, desc: e.target.value})} />
+                                        
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <select className="w-full p-2 border rounded text-sm bg-gray-50" value={finForm.category} onChange={e => setFinForm({...finForm, category: e.target.value})}>
+                                                <option>Outros</option><option>Dízimo</option><option>Oferta</option><option>Alimentação</option><option>Contas</option><option>Transporte</option><option>Saúde</option><option>Lazer</option><option>Salário</option>
+                                            </select>
+                                            <select className="w-full p-2 border rounded text-sm bg-gray-50" value={finForm.method} onChange={e => setFinForm({...finForm, method: e.target.value})}>
+                                                <option>Dinheiro</option><option>Cartão Crédito</option><option>Cartão Débito</option><option>Pix</option>
+                                                <option>Carnê/Boleto</option>
+                                            </select>
+                                        </div>
+
+                                        {/* CARTÃO */}
+                                        {finForm.method === 'Cartão Crédito' && (
+                                            <div className="bg-yellow-50 p-3 rounded space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-yellow-800">Cartão:</span>
+                                                    <select className="w-full p-1 border rounded text-sm" value={finForm.cardId} onChange={e => setFinForm({...finForm, cardId: e.target.value})}>
+                                                        <option value="">Selecione...</option>
+                                                        {userCards.map(card => <option key={card.id} value={card.id}>{card.name}</option>)}
+                                                    </select>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-yellow-800">Parcelas:</span>
+                                                    <input type="number" min="1" max="48" className="w-16 p-1 border rounded text-sm" value={finForm.installments} onChange={e => setFinForm({...finForm, installments: e.target.value})} />
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* CARNÊ/BOLETO */}
+                                        {finForm.method === 'Carnê/Boleto' && !editingId && (
+                                            <div className="bg-blue-50 p-3 rounded space-y-2">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-blue-800">Parcelas:</span>
+                                                    <input type="number" min="1" max="48" className="w-16 p-1 border rounded text-sm" value={finForm.installments} onChange={e => setFinForm({...finForm, installments: e.target.value})} />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="flex gap-2 pt-2">
+                                            <button onClick={() => setFinForm({...finForm, type: 'income'})} className={`flex-1 py-2 rounded text-sm font-bold transition ${finForm.type === 'income' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-400'}`}>Receita</button>
+                                            <button onClick={() => setFinForm({...finForm, type: 'expense'})} className={`flex-1 py-2 rounded text-sm font-bold transition ${finForm.type === 'expense' ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-400'}`}>Despesa</button>
+                                        </div>
+                                        <button onClick={handleAddEntry} className="w-full bg-gray-800 text-white py-3 rounded-lg font-bold shadow-lg hover:bg-gray-700 mt-2 flex justify-center items-center gap-2"><FinIconWrapper name={editingId ? 'edit-2' : 'plus'}/> {editingId ? 'Atualizar' : 'Adicionar'}</button>
+                                    </div>
+                                </div>
+
+                                {/* LISTA */}
+                                <div className="bg-white rounded-xl shadow overflow-hidden">
+                                    <div className="flex justify-between items-center bg-gray-50 px-4 py-2">
+                                        <span className="font-bold text-xs text-gray-500 uppercase">Histórico</span>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => setHistoryFilter('all')} className={`text-[10px] font-bold px-2 py-1 rounded ${historyFilter === 'all' ? 'bg-gray-200' : 'text-gray-400'}`}>Todos</button>
+                                            <button onClick={() => setHistoryFilter('pending')} className={`text-[10px] font-bold px-2 py-1 rounded ${historyFilter === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'text-gray-400'}`}>Pendentes</button>
+                                            <button onClick={() => setHistoryFilter('paid')} className={`text-[10px] font-bold px-2 py-1 rounded ${historyFilter === 'paid' ? 'bg-green-100 text-green-700' : 'text-gray-400'}`}>Pagos</button>
+                                        </div>
+                                    </div>
+                                    <ul className="divide-y divide-gray-100">
+                                        {filteredEntries.length === 0 ? <li className="p-4 text-center text-gray-400 text-sm">Sem registos visíveis.</li> : 
+                                        filteredEntries.sort((a,b) => new Date(a.date) - new Date(b.date)).map(entry => (
+                                            <li key={entry.id} className={`p-4 flex justify-between items-center ${entry.status === 'paid' ? 'bg-white opacity-75' : 'bg-white'}`}>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`font-bold ${entry.status === 'paid' ? 'text-gray-500 line-through' : 'text-gray-800'}`}>{entry.desc}</span>
+                                                        <span className="text-[10px] px-2 py-0.5 bg-gray-100 rounded text-gray-500">{entry.category}</span>
+                                                    </div>
+                                                    <div className="text-xs text-gray-400 mt-1 flex flex-wrap items-center gap-1">
+                                                        {new Date(entry.date).toLocaleDateString('pt-BR')} • {entry.method}
+                                                        {entry.method === 'Cartão Crédito' && entry.cardId && (
+                                                            <span className="bg-purple-100 text-purple-700 px-1 rounded border border-purple-200 text-[10px]">
+                                                                {getCardName(entry.cardId)}
+                                                            </span>
+                                                        )}
+                                                        {isOverdue(entry.date) && entry.status !== 'paid' && entry.type === 'expense' && <span className="text-red-500 font-bold ml-1 bg-red-100 px-1 rounded">Vencido</span>}
+                                                    </div>
+                                                </div>
+                                                <div className="text-right flex flex-col items-end gap-2">
+                                                    <div className={`font-bold ${entry.type === 'income' ? 'text-green-600' : 'text-red-600'} ${entry.status === 'pending' ? '' : 'opacity-50'}`}>
+                                                        {entry.type === 'income' ? '+' : '-'} {parseFloat(entry.value).toFixed(2)}
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => handleEditEntry(entry)} className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-400 hover:bg-blue-50 hover:text-blue-500 transition-all"><FinIconWrapper name="edit-2" size={14}/></button>
+                                                        <button onClick={() => toggleEntryStatus(entry.id)} className={`w-8 h-8 flex items-center justify-center rounded-full border transition-all ${entry.status === 'paid' ? 'bg-green-500 border-green-600 text-white' : 'bg-white border-gray-300 text-gray-300'}`}><FinIconWrapper name="check" size={16} /></button>
+                                                        {/* LIXEIRA INTELIGENTE AQUI */}
+                                                        <button onClick={() => handleTrashClick(entry)} className="w-8 h-8 flex items-center justify-center rounded-full border border-gray-200 text-gray-300 hover:bg-red-50 hover:text-red-500 transition-all"><FinIconWrapper name="trash-2" size={14}/></button>
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                                <SimplePieChart data={chartData} onSliceClick={handlePieClick} />
+                            </div>
+                        )}
+
+                        {view === 'cards' && (
+                            <div className="space-y-6">
+                                <div className="bg-white p-4 rounded-xl shadow">
+                                    <h3 className="font-bold text-purple-700 mb-3 text-sm flex items-center gap-2"><FinIconWrapper name="credit-card"/> Novo Cartão</h3>
+                                    <div className="flex gap-2 mb-2">
+                                        <input type="text" placeholder="Nome" className="flex-1 p-2 border rounded text-sm" value={cardForm.name} onChange={e => setCardForm({...cardForm, name: e.target.value})} />
+                                        <input type="number" placeholder="Limite" className="w-24 p-2 border rounded text-sm" value={cardForm.limit} onChange={e => setCardForm({...cardForm, limit: e.target.value})} />
+                                        <input type="number" placeholder="Dia Venc." min="1" max="31" className="w-20 p-2 border rounded text-sm" value={cardForm.dueDay} onChange={e => setCardForm({...cardForm, dueDay: e.target.value})} />
+                                    </div>
+                                    <button onClick={handleAddCard} className="w-full bg-purple-600 text-white py-2 rounded font-bold hover:bg-purple-700">Adicionar Cartão</button>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    {userCards.map(card => {
+                                        const totalUsed = getTotalCardUsage(card.id); 
+                                        const currentInvoice = getCurrentInvoiceValue(card.id); 
+                                        const available = card.limit - totalUsed; 
+                                        const percentUsed = Math.min(100, (totalUsed / card.limit) * 100);
+                                        
+                                        // Filtra os lançamentos deste cartão que ainda não foram pagos (parcelas futuras/atuais)
+                                        const cardEntries = financialEntries
+                                            .filter(e => e.cardId === card.id && e.status === 'pending')
+                                            .sort((a,b) => new Date(a.date) - new Date(b.date));
+
+                                        return (
+                                            <div key={card.id} className="bg-white rounded-xl shadow-lg overflow-hidden transition-all">
+                                                {/* Área clicável para expandir */}
+                                                <div 
+                                                    onClick={() => toggleCardDetails(card.id)}
+                                                    className="bg-gradient-to-r from-gray-800 to-gray-700 p-5 text-white relative cursor-pointer hover:opacity-95"
+                                                >
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div><h4 className="font-bold text-lg">{card.name}</h4><span className="text-xs text-gray-400">Vence dia {card.dueDay}</span></div>
+                                                        <FinIconWrapper name="credit-card" className="text-gray-500 opacity-50" size={32}/>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                                                        <div><div className="text-xs text-gray-400">Fatura Atual (Mês)</div><div className="font-bold text-red-300">R$ {currentInvoice.toFixed(2)}</div></div>
+                                                        <div className="text-right"><div className="text-xs text-gray-400">Disponível</div><div className="font-bold text-green-300">R$ {available.toFixed(2)}</div></div>
+                                                    </div>
+                                                    <div className="w-full bg-gray-600 h-2 rounded-full overflow-hidden mb-2">
+                                                        <div className={`h-full ${percentUsed > 90 ? 'bg-red-500' : 'bg-green-500'}`} style={{width: `${percentUsed}%`}}></div>
+                                                    </div>
+                                                    
+                                                    {/* Botão de Excluir Cartão */}
+                                                    <button onClick={(e) => { e.stopPropagation(); deleteItem(card.id, userCards, setUserCards); }} className="absolute top-2 right-2 text-gray-500 hover:text-red-400"><FinIconWrapper name="trash-2" size={16}/></button>
+                                                    
+                                                    {/* Indicador visual de expandir */}
+                                                    <div className="text-center text-[10px] text-gray-400 mt-1">
+                                                        {expandedCardId === card.id ? '▲ Ocultar Detalhes' : '▼ Ver Parcelas e Fatura'}
+                                                    </div>
+                                                </div>
+
+                                                {/* Lista de Parcelas (Só aparece se clicar) */}
+                                                {expandedCardId === card.id && (
+                                                    <div className="bg-gray-50 p-4 border-t border-gray-200 animate-fadeIn">
+                                                        <h5 className="font-bold text-gray-500 text-xs uppercase mb-3">Parcelas a Vencer (Fatura Aberta e Futuras)</h5>
+                                                        {cardEntries.length === 0 ? (
+                                                            <p className="text-center text-sm text-gray-400">Nenhuma compra pendente neste cartão.</p>
+                                                        ) : (
+                                                            <ul className="space-y-2">
+                                                                {cardEntries.map(entry => (
+                                                                    <li key={entry.id} className="flex justify-between items-center bg-white p-3 rounded border border-gray-100 shadow-sm">
+                                                                        <div>
+                                                                            <div className="font-bold text-gray-800 text-sm">{entry.desc}</div>
+                                                                            <div className="text-xs text-gray-500">{new Date(entry.date).toLocaleDateString('pt-BR')} • {entry.category}</div>
+                                                                        </div>
+                                                                        <div className="font-bold text-red-600 text-sm">
+                                                                            R$ {entry.value.toFixed(2)}
+                                                                        </div>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                        <div className="mt-4 pt-2 border-t border-gray-200 text-right">
+                                                            <span className="text-xs font-bold text-gray-500 uppercase mr-2">Total Pendente:</span>
+                                                            <span className="font-bold text-gray-800">R$ {cardEntries.reduce((acc, curr) => acc + curr.value, 0).toFixed(2)}</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                        
+                        {view === 'debts' && (
+                            <div className="space-y-6">
+                                <div className="bg-indigo-600 p-6 rounded-2xl shadow-lg text-white text-center"><div className="text-xs font-bold uppercase opacity-80 mb-1">Total Dívidas Longas</div><div className="text-3xl font-bold">R$ {userDebts.reduce((acc, curr) => acc + (curr.totalValue - (curr.totalValue/curr.installments * (getDebtProgress(curr.id).paid))), 0).toFixed(2)}</div></div>
+                                <div className="bg-white p-4 rounded-xl shadow border border-indigo-100">
+                                    <h3 className="font-bold text-gray-700 mb-3 text-sm flex items-center gap-2"><FinIconWrapper name="briefcase"/> Nova Dívida/Financiamento</h3>
+                                    <div className="grid grid-cols-1 gap-3">
+                                        <input type="text" placeholder="Nome (Ex: Casa)" className="w-full p-2 border rounded text-sm bg-gray-50" value={debtForm.name} onChange={e => setDebtForm({...debtForm, name: e.target.value})} />
+                                        <div className="flex gap-2">
+                                            <input type="number" placeholder="Valor Total" className="flex-1 p-2 border rounded text-sm" value={debtForm.totalValue} onChange={e => setDebtForm({...debtForm, totalValue: e.target.value})} />
+                                            <input type="number" placeholder="Parcelas" className="w-24 p-2 border rounded text-sm" value={debtForm.installments} onChange={e => setDebtForm({...debtForm, installments: e.target.value})} />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <div className="flex-1">
+                                                <label className="block text-[10px] font-bold text-gray-400 mb-1">Dia Vencimento</label>
+                                                <input type="number" min="1" max="31" className="w-full p-2 border rounded text-sm bg-gray-50" value={debtForm.dueDay} onChange={e => setDebtForm({...debtForm, dueDay: e.target.value})} placeholder="Dia" />
+                                            </div>
+                                            <div className="flex-1 flex items-end"><button onClick={handleAddDebt} className="w-full bg-indigo-600 text-white py-2 rounded font-bold hover:bg-indigo-700">Salvar</button></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    {userDebts.map(debt => {
+                                        const { paid, total } = getDebtProgress(debt.id);
+                                        const remaining = debt.totalValue - ((debt.totalValue/debt.installments) * paid);
+                                        const progress = (paid / debt.installments) * 100;
+                                        return (
+                                            <div key={debt.id} className="bg-white rounded-xl shadow-lg overflow-hidden border-l-4 border-indigo-500">
+                                                <div className="p-4">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <h4 className="font-bold text-indigo-900 text-lg">{debt.name}</h4>
+                                                        <button onClick={() => deleteDebt(debt.id)} className="text-gray-400 hover:text-red-500"><FinIconWrapper name="trash-2" size={16}/></button>
+                                                    </div>
+                                                    <div className="flex justify-between text-xs text-gray-500 mb-2">
+                                                        <span>Pago: {paid}/{debt.installments}</span>
+                                                        <span>Restante: R$ {remaining.toFixed(2)}</span>
+                                                    </div>
+                                                    <div className="w-full bg-gray-200 h-3 rounded-full overflow-hidden mb-3">
+                                                        <div className="h-full bg-indigo-500 transition-all duration-500" style={{width: `${progress}%`}}></div>
+                                                    </div>
+                                                    <p className="text-[10px] text-center text-gray-400">Gerencie as parcelas na aba FLUXO.</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {view === 'investments' && (
+                            <div className="space-y-6">
+                                <div className="bg-teal-600 p-6 rounded-2xl shadow-lg text-white text-center"><div className="text-xs font-bold uppercase opacity-80 mb-1">Total Investido</div><div className="text-3xl font-bold">R$ {userInvestments.reduce((acc, curr) => acc + curr.value, 0).toFixed(2)}</div></div>
+                                <div className="bg-white p-4 rounded-xl shadow"><h3 className="font-bold text-gray-700 mb-3 text-sm">Adicionar Investimento</h3><div className="flex flex-col gap-3"><div className="flex gap-2"><select className="w-1/3 p-2 border rounded text-sm bg-gray-50" value={investmentForm.type} onChange={e => setInvestmentForm({...investmentForm, type: e.target.value})}><option>Poupança</option><option>CDB</option><option>Ações</option><option>Fundos</option><option>Outros</option></select><input type="text" placeholder="Nome" className="flex-1 p-2 border rounded text-sm" value={investmentForm.name} onChange={e => setInvestmentForm({...investmentForm, name: e.target.value})} /></div><div className="flex gap-2"><input type="number" placeholder="Valor (R$)" className="flex-1 p-2 border rounded text-sm" value={investmentForm.value} onChange={e => setInvestmentForm({...investmentForm, value: e.target.value})} /><button onClick={handleAddInvestment} className="w-24 bg-teal-600 text-white py-2 rounded font-bold hover:bg-teal-700">Salvar</button></div></div></div>
+                                <div className="space-y-3">{userInvestments.map(inv => (<div key={inv.id} className="bg-white p-4 rounded-xl shadow border-l-4 border-teal-500 flex justify-between items-center"><div><span className="text-[10px] font-bold text-teal-600 bg-teal-50 px-2 py-0.5 rounded uppercase">{inv.type}</span><div className="font-bold text-gray-800 mt-1">{inv.name}</div></div><div className="flex items-center gap-3"><span className="font-bold text-teal-700">R$ {inv.value.toFixed(2)}</span><button onClick={() => deleteItem(inv.id, userInvestments, setUserInvestments)} className="text-gray-400 hover:text-red-500"><FinIconWrapper name="trash-2" size={16}/></button></div></div>))}</div>
+                            </div>
+                        )}
+
+                        {view === 'assets' && (
+                            <div className="space-y-6">
+                                <div className="bg-blue-600 p-6 rounded-2xl shadow-lg text-white text-center"><div className="text-xs font-bold uppercase opacity-80 mb-1">Património Total</div><div className="text-3xl font-bold">R$ {userAssets.reduce((acc, curr) => acc + curr.value, 0).toFixed(2)}</div></div>
+                                <div className="bg-white p-4 rounded-xl shadow"><h3 className="font-bold text-gray-700 mb-3 text-sm">Adicionar Bem</h3><div className="flex gap-2 mb-2"><input type="text" placeholder="Nome" className="flex-1 p-2 border rounded text-sm" value={assetForm.name} onChange={e => setAssetForm({...assetForm, name: e.target.value})} /><input type="number" placeholder="Valor" className="w-24 p-2 border rounded text-sm" value={assetForm.value} onChange={e => setAssetForm({...assetForm, value: e.target.value})} /></div><button onClick={handleAddAsset} className="w-full bg-blue-600 text-white py-2 rounded font-bold hover:bg-blue-700">Salvar Bem</button></div>
+                                <div className="grid grid-cols-1 gap-3">{userAssets.map(asset => (<div key={asset.id} className="bg-white p-4 rounded-xl shadow flex justify-between items-center border-l-4 border-blue-500"><span className="font-bold text-gray-800">{asset.name}</span><div className="flex items-center gap-3"><span className="font-bold text-blue-600">R$ {asset.value.toFixed(2)}</span><button onClick={() => deleteItem(asset.id, userAssets, setUserAssets)} className="text-gray-400 hover:text-red-500"><FinIconWrapper name="trash-2" size={16}/></button></div></div>))}</div>
+                            </div>
+                        )}
+
+                        {view === 'loans' && (
+                            <div className="space-y-6">
+                                <div className="bg-orange-500 p-6 rounded-2xl shadow-lg text-white text-center"><div className="text-xs font-bold uppercase opacity-80 mb-1">Total a Receber</div><div className="text-3xl font-bold">R$ {userLoans.reduce((acc, curr) => acc + curr.value, 0).toFixed(2)}</div></div>
+                                <div className="bg-white p-4 rounded-xl shadow"><h3 className="font-bold text-gray-700 mb-3 text-sm">Registar Dívida</h3><input type="text" placeholder="Quem deve?" className="w-full p-2 border rounded text-sm mb-2" value={loanForm.name} onChange={e => setLoanForm({...loanForm, name: e.target.value})} /><div className="flex gap-2 mb-2"><input type="number" placeholder="Valor" className="flex-1 p-2 border rounded text-sm" value={loanForm.value} onChange={e => setLoanForm({...loanForm, value: e.target.value})} /><input type="date" className="w-32 p-2 border rounded text-sm" value={loanForm.date} onChange={e => setLoanForm({...loanForm, date: e.target.value})} /></div><input type="text" placeholder="Motivo" className="w-full p-2 border rounded text-sm mb-3" value={loanForm.desc} onChange={e => setLoanForm({...loanForm, desc: e.target.value})} /><button onClick={handleAddLoan} className="w-full bg-orange-500 text-white py-2 rounded font-bold hover:bg-orange-600">Adicionar</button></div>
+                                <div className="space-y-3">{userLoans.map(loan => (<div key={loan.id} className="bg-white p-4 rounded-xl shadow border-l-4 border-orange-400"><div className="flex justify-between items-start mb-1"><h4 className="font-bold text-gray-800">{loan.name}</h4><span className="font-bold text-orange-600">R$ {loan.value.toFixed(2)}</span></div><p className="text-sm text-gray-600">{loan.desc}</p><div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-100"><span className="text-xs text-gray-400">Previsto: {loan.date ? new Date(loan.date).toLocaleDateString('pt-BR') : 'Sem data'}</span><button onClick={() => deleteLoan(loan.id)} className="text-red-400 hover:text-red-600 text-xs font-bold flex items-center gap-1"><FinIconWrapper name="trash-2" size={12}/> Apagar</button></div></div>))}</div>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
 
         // --- DADOS PARA A FORCA ---
         const HANGMAN_CATEGORIES = {
@@ -309,11 +1136,6 @@
             { question: "Quem abriu o Mar Vermelho?", options: ["Elias", "Moisés", "Josué", "Arão"], answer: 1 },
             { question: "Qual profeta foi levado ao céu numa carruagem de fogo?", options: ["Elias", "Eliseu", "Isaías", "Jeremias"], answer: 0 }
         ];
-        const radioStations = [
-            { id: 1, name: "Melhores Louvores", videoId: "PLz8XQOhoC307g-L3L-WfQy5Cq-LdY_KzD", color: "bg-yellow-500" },
-            { id: 2, name: "Adoração Profunda", videoId: "PLz8XQOhoC305-qO9gV7z-XQy5Cq-LdY_K", color: "bg-red-700" },
-            { id: 3, name: "Gospel Internacional", videoId: "PLz8XQOhoC306-qO9gV7z-XQy5Cq-LdY_K", color: "bg-gray-400" }
-        ];
         
         // --- BASE DE DADOS DE VERSÍCULOS EXPANDIDA ---
         const verseDatabase = {
@@ -325,75 +1147,23 @@
                 { text: "Não fui eu que ordenei a você? Seja forte e corajoso! Não se apavore nem desanime, pois o Senhor, o seu Deus, estará com você por onde você andar.", ref: "Josué 1:9" },
                 { text: "Entrega o teu caminho ao Senhor; confia nele, e ele o fará.", ref: "Salmos 37:5" },
                 { text: "E Jesus, olhando para eles, disse-lhes: Aos homens é isso impossível, mas a Deus tudo é possível.", ref: "Mateus 19:26" },
-                { text: "Mil cairão ao teu lado, e dez mil à tua direita, mas não chegará a ti.", ref: "Salmos 91:7" },
-                { text: "O Senhor é a minha luz e a minha salvação; a quem temerei? O Senhor é a força da minha vida; de quem me recearei?", ref: "Salmos 27:1" },
-                { text: "Porque para Deus nada é impossível.", ref: "Lucas 1:37" },
-                { text: "Ainda que eu andasse pelo vale da sombra da morte, não temeria mal algum, porque tu estás comigo.", ref: "Salmos 23:4" },
-                { text: "Vinde a mim, todos os que estais cansados e oprimidos, e eu vos aliviarei.", ref: "Mateus 11:28" },
-                { text: "Mas, em todas estas coisas somos mais que vencedores, por aquele que nos amou.", ref: "Romanos 8:37" },
-                { text: "O choro pode durar uma noite, mas a alegria vem pela manhã.", ref: "Salmos 30:5" },
-                { text: "Ora, a fé é a certeza daquilo que esperamos e a prova das coisas que não vemos.", ref: "Hebreus 11:1" },
-                { text: "Não andeis ansiosos por coisa alguma; antes em tudo sejam os vossos pedidos conhecidos diante de Deus pela oração e súplica com ações de graças.", ref: "Filipenses 4:6" },
-                { text: "Confia no Senhor de todo o teu coração e não te estribes no teu próprio entendimento.", ref: "Provérbios 3:5" },
-                { text: "Deus é o nosso refúgio e fortaleza, socorro bem presente na angústia.", ref: "Salmos 46:1" },
-                { text: "Portanto, não se preocupem com o amanhã, pois o amanhã trará as suas próprias preocupações. Basta a cada dia o seu próprio mal.", ref: "Mateus 6:34" },
-                { text: "Sabemos que Deus age em todas as coisas para o bem daqueles que o amam, dos que foram chamados de acordo com o seu propósito.", ref: "Romanos 8:28" }
+                { text: "Mil cairão ao teu lado, e dez mil à tua direita, mas não chegará a ti.", ref: "Salmos 91:7" }
             ],
             financeiro: [
                 { text: "O rico domina sobre os pobres e o que toma emprestado é servo do que empresta.", ref: "Provérbios 22:7" },
                 { text: "Honra ao Senhor com os teus bens, e com a primeira parte de todos os teus ganhos.", ref: "Provérbios 3:9" },
                 { text: "Pois qual de vós, querendo edificar uma torre, não se assenta primeiro a fazer as contas dos gastos?", ref: "Lucas 14:28" },
-                { text: "O meu Deus suprirá todas as vossas necessidades segundo as suas riquezas na glória em Cristo Jesus.", ref: "Filipenses 4:19" },
-                { text: "Lembra-te do Senhor teu Deus, porque é ele que te dá força para adquirires riquezas.", ref: "Deuteronômio 8:18" },
-                { text: "O Senhor te abrirá o seu bom tesouro, o céu, para dar chuva à tua terra no seu tempo, e para abençoar toda a obra das tuas mãos.", ref: "Deuteronômio 28:12" },
-                { text: "A bênção do Senhor é que enriquece; e não traz consigo dores.", ref: "Provérbios 10:22" },
-                { text: "O homem fiel será cumulado de bênçãos, mas o que se apressa a enriquecer não ficará impune.", ref: "Provérbios 28:20" },
-                { text: "Dai, e ser-vos-á dado; boa medida, recalcada, sacudida e transbordando, vos deitarão no vosso regaço.", ref: "Lucas 6:38" },
-                { text: "Quem ama o dinheiro jamais dele se farta; e quem ama a abundância nunca se farta da renda.", ref: "Eclesiastes 5:10" },
-                { text: "Mais vale o pouco com o temor do Senhor, do que um grande tesouro onde há inquietação.", ref: "Provérbios 15:16" },
-                { text: "Trazei todos os dízimos à casa do tesouro, para que haja mantimento na minha casa.", ref: "Malaquias 3:10" },
-                { text: "Bem-aventurado o homem que teme ao Senhor... Prosperidade e riquezas haverá na sua casa.", ref: "Salmos 112:1-3" },
-                { text: "Consagre ao Senhor tudo o que você faz, e os seus planos serão bem-sucedidos.", ref: "Provérbios 16:3" },
-                { text: "A riqueza obtida com falsidade é neblina que se dissipa e armadilha mortal.", ref: "Provérbios 21:6" },
-                { text: "Não amem o dinheiro e contentem-se com o que vocês têm.", ref: "Hebreus 13:5" },
-                { text: "O preguiçoso deseja e nada tem, mas a alma dos diligentes engorda.", ref: "Provérbios 13:4" },
-                { text: "A riqueza de procedência vã diminuirá, mas quem a ajunta com o próprio trabalho a aumentará.", ref: "Provérbios 13:11" }
+                { text: "O meu Deus suprirá todas as vossas necessidades segundo as suas riquezas na glória em Cristo Jesus.", ref: "Filipenses 4:19" }
             ],
             espiritual: [
                 { text: "Vinde a mim, todos os que estais cansados e oprimidos, e eu vos aliviarei.", ref: "Mateus 11:28" },
                 { text: "Verdadeiramente ele tomou sobre si as nossas enfermidades, e as nossas dores levou sobre si.", ref: "Isaías 53:4" },
-                { text: "Sara os quebrantados de coração, e lhes ata as suas feridas.", ref: "Salmo 147:3" },
-                { text: "Ele é quem perdoa todas as tuas iniquidades; quem sara todas as tuas enfermidades.", ref: "Salmos 103:3" },
-                { text: "A oração da fé salvará o doente, e o Senhor o levantará.", ref: "Tiago 5:15" },
-                { text: "Cura-me, Senhor, e sararei; salva-me, e serei salvo; porque tu és o meu louvor.", ref: "Jeremias 17:14" },
-                { text: "Eis que eu trarei a ela saúde e cura, e os sararei, e lhes manifestarei abundância de paz e de verdade.", ref: "Jeremias 33:6" },
-                { text: "Pelas suas pisaduras fomos sarados.", ref: "Isaías 53:5" },
-                { text: "O Senhor o sustentará no leito da enfermidade; tu o restaurarás da sua cama de doença.", ref: "Salmos 41:3" },
-                { text: "Não temas, porque eu sou contigo; não te assombres, porque eu sou teu Deus; eu te fortaleço, e te ajudo, e te sustento com a destra da minha justiça.", ref: "Isaías 41:10" },
-                { text: "Visto que você é precioso e honrado à minha vista, e porque eu o amo...", ref: "Isaías 43:4" },
-                { text: "Lançando sobre ele toda a vossa ansiedade, porque ele tem cuidado de vós.", ref: "1 Pedro 5:7" },
-                { text: "Deixo-vos a paz, a minha paz vos dou; não vo-la dou como o mundo a dá. Não se turbe o vosso coração, nem se atemorize.", ref: "João 14:27" },
-                { text: "Clama a mim, e responder-te-ei, e anunciar-te-ei coisas grandes e firmes que não sabes.", ref: "Jeremias 33:3" },
-                { text: "Porque eu, o Senhor teu Deus, te tomo pela tua mão direita; e te digo: Não temas, eu te ajudo.", ref: "Isaías 41:13" },
-                { text: "O Senhor está perto dos que têm o coração quebrantado e salva os de espírito abatido.", ref: "Salmos 34:18" }
+                { text: "Sara os quebrantados de coração, e lhes ata as suas feridas.", ref: "Salmo 147:3" }
             ],
             familia: [
                 { text: "Crê no Senhor Jesus e serás salvo, tu e a tua casa.", ref: "Atos 16:31" },
                 { text: "Educa a criança no caminho em que deve andar; e até quando envelhecer não se desviará dele.", ref: "Provérbios 22:6" },
-                { text: "Acima de tudo, porém, tende amor intenso uns para com os outros, porque o amor cobre uma multidão de pecados.", ref: "1 Pedro 4:8" },
-                { text: "Eu e a minha casa serviremos ao Senhor.", ref: "Josué 24:15" },
-                { text: "E estas palavras, que hoje te ordeno, estarão no teu coração; e as ensinarás a teus filhos e delas falarás assentado em tua casa, e andando pelo caminho...", ref: "Deuteronômio 6:6-7" },
-                { text: "Honra a teu pai e a tua mãe, para que se prolonguem os teus dias na terra que o Senhor teu Deus te dá.", ref: "Êxodo 20:12" },
-                { text: "A mulher sábia edifica a sua casa, mas a tola a derruba com as próprias mãos.", ref: "Provérbios 14:1" },
-                { text: "Herança do Senhor são os filhos; o fruto do ventre o seu galardão.", ref: "Salmos 127:3" },
-                { text: "Oh! quão bom e quão suave é que os irmãos vivam em união.", ref: "Salmos 133:1" },
-                { text: "Maridos, amem suas mulheres, assim como Cristo amou a igreja e entregou-se a si mesmo por ela.", ref: "Efésios 5:25" },
-                { text: "Filhos, obedecei em tudo a vossos pais, porque isto é agradável ao Senhor.", ref: "Colossenses 3:20" },
-                { text: "Se alguém não cuida dos seus, e especialmente dos da sua própria casa, negou a fé e é pior do que o descrente.", ref: "1 Timóteo 5:8" },
-                { text: "Coroa dos velhos são os filhos dos filhos; e a glória dos filhos são seus pais.", ref: "Provérbios 17:6" },
-                { text: "O amor é paciente, o amor é bondoso. Não inveja, não se vangloria, não se orgulha.", ref: "1 Coríntios 13:4" },
-                { text: "Suportem-se uns aos outros e perdoem as queixas que tiverem uns contra os outros. Perdoem como o Senhor lhes perdoou.", ref: "Colossenses 3:13" },
-                { text: "A tua mulher será como a videira frutífera aos lados da tua casa; os teus filhos como plantas de oliveira à roda da tua mesa.", ref: "Salmos 128:3" }
+                { text: "Acima de tudo, porém, tende amor intenso uns para com os outros, porque o amor cobre uma multidão de pecados.", ref: "1 Pedro 4:8" }
             ]
         };
         
@@ -401,23 +1171,8 @@
             "Gênesis": { 1: [{ number: 1, text: "No princípio criou Deus o céu e a terra." }] },
             "Salmos": { 23: [{ number: 1, text: "O SENHOR é o meu pastor, nada me faltará." }] }
         };
-        const bibleData = {
-            "Gênesis": { chapters: 50 }, "Êxodo": { chapters: 40 }, "Levítico": { chapters: 27 }, "Números": { chapters: 36 }, "Deuteronômio": { chapters: 34 },
-            "Josué": { chapters: 24 }, "Juízes": { chapters: 21 }, "Rute": { chapters: 4 }, "1 Samuel": { chapters: 31 }, "2 Samuel": { chapters: 24 },
-            "1 Reis": { chapters: 22 }, "2 Reis": { chapters: 25 }, "1 Crônicas": { chapters: 29 }, "2 Crônicas": { chapters: 36 }, "Esdras": { chapters: 10 },
-            "Neemias": { chapters: 13 }, "Ester": { chapters: 10 }, "Jó": { chapters: 42 }, "Salmos": { chapters: 150 }, "Provérbios": { chapters: 31 },
-            "Eclesiastes": { chapters: 12 }, "Cânticos": { chapters: 8 }, "Isaías": { chapters: 66 }, "Jeremias": { chapters: 52 }, "Lamentações": { chapters: 5 },
-            "Ezequiel": { chapters: 48 }, "Daniel": { chapters: 12 }, "Oseias": { chapters: 14 }, "Joel": { chapters: 3 }, "Amós": { chapters: 9 },
-            "Obadias": { chapters: 1 }, "Jonas": { chapters: 4 }, "Miqueias": { chapters: 7 }, "Naum": { chapters: 3 }, "Habacuque": { chapters: 3 },
-            "Sofonias": { chapters: 3 }, "Ageu": { chapters: 2 }, "Zacarias": { chapters: 14 }, "Malaquias": { chapters: 4 },
-            "Mateus": { chapters: 28 }, "Marcos": { chapters: 16 }, "Lucas": { chapters: 24 }, "João": { chapters: 21 }, "Atos": { chapters: 28 },
-            "Romanos": { chapters: 16 }, "1 Coríntios": { chapters: 16 }, "2 Coríntios": { chapters: 13 }, "Gálatas": { chapters: 6 }, "Efésios": { chapters: 6 },
-            "Filipenses": { chapters: 4 }, "Colossenses": { chapters: 4 }, "1 Tessalonicenses": { chapters: 5 }, "2 Tessalonicenses": { chapters: 3 },
-            "1 Timóteo": { chapters: 6 }, "2 Timóteo": { chapters: 4 }, "Tito": { chapters: 3 }, "Filemom": { chapters: 1 }, "Hebreus": { chapters: 13 },
-            "Tiago": { chapters: 5 }, "1 Pedro": { chapters: 5 }, "2 Pedro": { chapters: 3 }, "1 João": { chapters: 5 }, "2 João": { chapters: 1 },
-            "3 João": { chapters: 1 }, "Judas": { chapters: 1 }, "Apocalipse": { chapters: 22 }
-        };
-        const bibleBooks = Object.keys(bibleData);
+        const bibleBooks = ["Gênesis", "Êxodo", "Levítico", "Números", "Deuteronômio", "Josué", "Juízes", "Rute", "1 Samuel", "2 Samuel", "1 Reis", "2 Reis", "1 Crônicas", "2 Crônicas", "Esdras", "Neemias", "Ester", "Jó", "Salmos", "Provérbios", "Eclesiastes", "Cânticos", "Isaías", "Jeremias", "Lamentações", "Ezequiel", "Daniel", "Oseias", "Joel", "Amós", "Obadias", "Jonas", "Miqueias", "Naum", "Habacuque", "Sofonias", "Ageu", "Zacarias", "Malaquias", "Mateus", "Marcos", "Lucas", "João", "Atos", "Romanos", "1 Coríntios", "2 Coríntios", "Gálatas", "Efésios", "Filipenses", "Colossenses", "1 Tessalonicenses", "2 Tessalonicenses", "1 Timóteo", "2 Timóteo", "Tito", "Filemom", "Hebreus", "Tiago", "1 Pedro", "2 Pedro", "1 João", "2 João", "3 João", "Judas", "Apocalipse"];
+        
         const nameDatabase = {
             "ana": "Cheia de graça e compaixão.", "maria": "Senhora soberana.", "joão": "Deus é cheio de graça.", "lucas": "O iluminado.", "pedro": "Rocha.",
             "paulo": "Pequeno.", "mateus": "Dádiva de Deus.", "marcos": "Guerreiro."
@@ -471,19 +1226,6 @@
             const [currentDate, setCurrentDate] = useState(new Date());
             const [diaryEntries, setDiaryEntries] = usePersistentState('userDiaryEntries', {});
 
-            // Estados Persistentes - FINANCEIRO
-            const [financialEntries, setFinancialEntries] = usePersistentState('financialEntries', []);
-            const [finForm, setFinForm] = useState({ 
-                date: new Date().toISOString().split('T')[0], 
-                desc: '', 
-                value: '', 
-                type: 'expense', // 'income' or 'expense'
-                category: 'Outros', 
-                method: 'Dinheiro', 
-                installments: 1, // Novo campo para parcelas
-                status: 'paid' 
-            });
-
             // Estados Persistentes - BÍBLIA (HIGHLIGHTS)
             const [highlights, setHighlights] = usePersistentState('bibleHighlights', {});
             const [activeHighlightColor, setActiveHighlightColor] = useState('#fef08a'); // Cor padrão (Amarelo)
@@ -509,7 +1251,7 @@
             const [memoryLock, setMemoryLock] = useState(false);
             const [memoryWin, setMemoryWin] = useState(false);
 
-            // --- HANGMAN (FORCA) STATES - NOVO ---
+            // --- HANGMAN (FORCA) STATES ---
             const [hangmanWord, setHangmanWord] = useState('');
             const [hangmanCategory, setHangmanCategory] = useState('');
             const [hangmanGuessed, setHangmanGuessed] = useState([]);
@@ -569,118 +1311,13 @@
             const changeDay = (days) => { const newDate = new Date(currentDate); newDate.setDate(newDate.getDate() + days); setCurrentDate(newDate); };
             const goToToday = () => setCurrentDate(new Date());
 
-            // --- LÓGICA FINANCEIRO ---
-            const handleAddFinancialEntry = () => {
-                if (!finForm.desc || !finForm.value) return alert("Preencha descrição e valor.");
-                
-                const totalValue = parseFloat(finForm.value);
-                const numInstallments = parseInt(finForm.installments) || 1;
-                const installmentValue = totalValue / numInstallments;
-                const newEntries = [];
-
-                // Criar lançamentos (parcelas)
-                for (let i = 0; i < numInstallments; i++) {
-                    // Calcular data do vencimento (mês a mês)
-                    const entryDate = new Date(finForm.date);
-                    entryDate.setMonth(entryDate.getMonth() + i);
-                    
-                    // Ajustar para não pular dias em meses mais curtos (opcional simples)
-                    // entryDate.setDate(new Date(finForm.date).getDate()); 
-
-                    newEntries.push({
-                        id: Date.now() + i, // ID único sequencial
-                        date: entryDate.toISOString().split('T')[0],
-                        desc: numInstallments > 1 ? `${finForm.desc} (${i + 1}/${numInstallments})` : finForm.desc,
-                        value: installmentValue,
-                        type: finForm.type,
-                        category: finForm.category,
-                        method: finForm.method,
-                        status: i === 0 ? 'paid' : 'pending' // A primeira paga, as outras a vencer (opcional)
-                    });
-                }
-
-                setFinancialEntries([...newEntries, ...financialEntries]);
-                setFinForm({ ...finForm, desc: '', value: '', installments: 1 }); // Reset fields
-                setShowToast(true); setTimeout(() => setShowToast(false), 2000);
-            };
-
-            const removeFinancialEntry = (id) => {
-                setFinancialEntries(financialEntries.filter(e => e.id !== id));
-            };
-
-            const financialSummary = useMemo(() => {
-                const income = financialEntries.filter(e => e.type === 'income').reduce((acc, curr) => acc + curr.value, 0);
-                const expense = financialEntries.filter(e => e.type === 'expense').reduce((acc, curr) => acc + curr.value, 0);
-                return { income, expense, balance: income - expense };
-            }, [financialEntries]);
-
-            // --- LÓGICA DE BACKUP FINANCEIRO (ARQUIVO JSON) ---
-            const exportFinancialData = () => {
-                if (financialEntries.length === 0) return alert("Não há dados para exportar.");
-                
-                const dataStr = JSON.stringify(financialEntries, null, 2);
-                const blob = new Blob([dataStr], { type: "application/json" });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-                link.download = `backup_financeiro_sistema_vida_${new Date().toISOString().split('T')[0]}.json`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            };
-
-            const importFinancialData = (event) => {
-                const file = event.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const importedData = JSON.parse(e.target.result);
-                        if (Array.isArray(importedData)) {
-                            // Validação básica para garantir que o formato está correto
-                            const isValid = importedData.every(item => item.date && item.desc && item.value !== undefined);
-                            
-                            if (isValid) {
-                                if (confirm(`Encontrados ${importedData.length} registos. Deseja substituir os dados atuais ou adicionar aos existentes?\n\nOK = Substituir tudo\nCancelar = Adicionar aos existentes`)) {
-                                    setFinancialEntries(importedData);
-                                } else {
-                                    // Adicionar, evitando duplicatas exatas de ID se houver
-                                    const currentIds = new Set(financialEntries.map(f => f.id));
-                                    const newEntries = importedData.filter(d => !currentIds.has(d.id));
-                                    setFinancialEntries([...financialEntries, ...newEntries]);
-                                }
-                                alert("Backup restaurado com sucesso!");
-                            } else {
-                                alert("O arquivo parece não conter dados financeiros válidos deste sistema.");
-                            }
-                        } else {
-                            alert("Formato de arquivo inválido.");
-                        }
-                    } catch (error) {
-                        console.error("Erro ao importar:", error);
-                        alert("Erro ao ler o arquivo. Verifique se é um backup válido (.json).");
-                    }
-                };
-                reader.readAsText(file);
-                // Limpar o input para permitir selecionar o mesmo arquivo novamente se necessário
-                event.target.value = '';
-            };
-
             // --- LÓGICA RADIO ---
             const toggleRadio = () => {
                 if (!audioRef.current) return;
-                
-                if (isPlayingRadio) {
-                    audioRef.current.pause();
-                } else {
+                if (isPlayingRadio) { audioRef.current.pause(); } 
+                else { 
                     const playPromise = audioRef.current.play();
-                    if (playPromise !== undefined) {
-                        playPromise.catch(error => {
-                            console.error("Erro ao tocar:", error);
-                            alert("Não foi possível reproduzir automaticamente. Verifique se o navegador permite áudio.");
-                        });
-                    }
+                    if (playPromise !== undefined) { playPromise.catch(error => { console.error("Erro ao tocar:", error); alert("Não foi possível reproduzir automaticamente. Verifique se o navegador permite áudio."); }); }
                 }
                 setIsPlayingRadio(!isPlayingRadio);
             };
@@ -715,70 +1352,33 @@
                 }
             };
 
-            // --- LÓGICA DO JOGO DA FORCA (NOVO) ---
+            // --- LÓGICA DO JOGO DA FORCA ---
             const startHangmanGame = () => {
                 Tone.start();
                 const categories = Object.keys(HANGMAN_CATEGORIES);
                 const randomCat = categories[Math.floor(Math.random() * categories.length)];
                 const wordList = HANGMAN_CATEGORIES[randomCat];
                 const randomWord = wordList[Math.floor(Math.random() * wordList.length)];
-                
-                setHangmanCategory(randomCat);
-                setHangmanWord(randomWord);
-                setHangmanGuessed([]);
-                setHangmanWrong([]);
-                setHangmanTimer(120);
-                setHangmanStatus('playing');
-                setHangmanActive(true);
-                setGameMode('hangman');
+                setHangmanCategory(randomCat); setHangmanWord(randomWord); setHangmanGuessed([]); setHangmanWrong([]); setHangmanTimer(120); setHangmanStatus('playing'); setHangmanActive(true); setGameMode('hangman');
             };
 
             const handleHangmanGuess = (letter) => {
                 if (hangmanStatus !== 'playing') return;
-                
-                // Reinicia o timer ao jogar (como pedido no código original)
                 setHangmanTimer(120);
-
                 if (hangmanWord.includes(letter)) {
-                    playSoundEffect('hangman_correct');
-                    setHangmanGuessed(prev => [...prev, letter]);
-                    
-                    // Check Victory
+                    playSoundEffect('hangman_correct'); setHangmanGuessed(prev => [...prev, letter]);
                     const uniqueChars = [...new Set(hangmanWord.split(''))];
                     const allGuessed = uniqueChars.every(char => [...hangmanGuessed, letter].includes(char));
-                    if (allGuessed) {
-                        setHangmanStatus('won');
-                        setHangmanActive(false);
-                        playSoundEffect('hangman_win');
-                    }
+                    if (allGuessed) { setHangmanStatus('won'); setHangmanActive(false); playSoundEffect('hangman_win'); }
                 } else {
-                    playSoundEffect('hangman_wrong');
-                    setHangmanWrong(prev => [...prev, letter]);
-                    
-                    // Check Defeat
-                    if (hangmanWrong.length + 1 >= 6) {
-                        setHangmanStatus('lost');
-                        setHangmanActive(false);
-                        playSoundEffect('hangman_lose');
-                    }
+                    playSoundEffect('hangman_wrong'); setHangmanWrong(prev => [...prev, letter]);
+                    if (hangmanWrong.length + 1 >= 6) { setHangmanStatus('lost'); setHangmanActive(false); playSoundEffect('hangman_lose'); }
                 }
             };
 
             useEffect(() => {
                 let interval;
-                if (hangmanActive && hangmanTimer > 0) {
-                    interval = setInterval(() => {
-                        setHangmanTimer(prev => {
-                            if (prev <= 1) {
-                                setHangmanActive(false);
-                                setHangmanStatus('lost');
-                                playSoundEffect('hangman_lose');
-                                return 0;
-                            }
-                            return prev - 1;
-                        });
-                    }, 1000);
-                }
+                if (hangmanActive && hangmanTimer > 0) { interval = setInterval(() => { setHangmanTimer(prev => { if (prev <= 1) { setHangmanActive(false); setHangmanStatus('lost'); playSoundEffect('hangman_lose'); return 0; } return prev - 1; }); }, 1000); }
                 return () => clearInterval(interval);
             }, [hangmanActive, hangmanTimer]);
 
@@ -814,35 +1414,15 @@
                 setDailyVerse(randomVerse);
                 if (!cardText) setCardText(randomVerse.text);
                 fetchChapter(selectedBook, selectedChapter);
-                
-                // MELHORIA DE VOZ: Tenta selecionar uma voz MASCULINA ou melhor automaticamente
                 const loadVoices = () => { 
                     if ('speechSynthesis' in window) { 
                         const available = window.speechSynthesis.getVoices(); 
                         setVoices(available); 
-                        
-                        // Filtra vozes em Português
                         const ptVoices = available.filter(v => v.lang.includes('pt'));
-                        
-                        // Lista de preferência para tentar achar vozes masculinas ou de alta qualidade
-                        // "Daniel" e "Felipe" são vozes masculinas comuns. "Google" geralmente tem boa qualidade.
                         const preferredNames = ["Daniel", "Felipe", "Ricardo", "Joaquim", "Microsoft", "Google"];
-                        
-                        let bestVoice = ptVoices[0]; // Fallback para a primeira voz PT encontrada
-                        
-                        // Tenta encontrar uma voz que corresponda à lista de preferência
-                        for (const name of preferredNames) {
-                            const found = ptVoices.find(v => v.name.includes(name));
-                            if (found) {
-                                bestVoice = found;
-                                break; // Para na primeira encontrada (prioridade para masculinas)
-                            }
-                        }
-                        
-                        if (bestVoice) {
-                            const index = available.indexOf(bestVoice);
-                            setSelectedVoiceIndex(index !== -1 ? index : 0); 
-                        }
+                        let bestVoice = ptVoices[0]; 
+                        for (const name of preferredNames) { const found = ptVoices.find(v => v.name.includes(name)); if (found) { bestVoice = found; break; } }
+                        if (bestVoice) { const index = available.indexOf(bestVoice); setSelectedVoiceIndex(index !== -1 ? index : 0); }
                     } 
                 };
                 if ('speechSynthesis' in window) { loadVoices(); window.speechSynthesis.onvoiceschanged = loadVoices; }
@@ -877,92 +1457,37 @@
 
             const toggleNarrator = () => {
                 if (!('speechSynthesis' in window)) return;
-                
-                if (isSpeaking) { 
-                    window.speechSynthesis.cancel(); 
-                    setIsSpeaking(false);
-                    isSpeakingRef.current = false;
-                } else {
+                if (isSpeaking) { window.speechSynthesis.cancel(); setIsSpeaking(false); isSpeakingRef.current = false; } else {
                     if (!chapterContent || !chapterContent.verses) return;
-                    setIsSpeaking(true);
-                    isSpeakingRef.current = true;
-                    
-                    // Lógica para ler versículo por versículo para evitar timeout do navegador
+                    setIsSpeaking(true); isSpeakingRef.current = true;
                     let currentVerseIndex = 0;
-                    
                     const speakNextVerse = () => {
-                        if (!isSpeakingRef.current) return; // Checa o ref atualizado imediatamente
-                        if (currentVerseIndex >= chapterContent.verses.length) {
-                            setIsSpeaking(false);
-                            isSpeakingRef.current = false;
-                            return;
-                        }
-
+                        if (!isSpeakingRef.current) return; 
+                        if (currentVerseIndex >= chapterContent.verses.length) { setIsSpeaking(false); isSpeakingRef.current = false; return; }
                         const verse = chapterContent.verses[currentVerseIndex];
-                        // Lê o número do versículo e o texto, ou só o texto
-                        const textToRead = `${verse.text}`;
-                        const utterance = new SpeechSynthesisUtterance(textToRead);
-                        
-                        if (voices[selectedVoiceIndex]) {
-                            utterance.voice = voices[selectedVoiceIndex];
-                        }
-                        
-                        utterance.onend = () => {
-                            currentVerseIndex++;
-                            speakNextVerse();
-                        };
-                        
-                        utterance.onerror = (e) => {
-                            console.error("Erro na fala", e);
-                            setIsSpeaking(false);
-                            isSpeakingRef.current = false;
-                        };
-
-                        // Salva referência global para prevenir Garbage Collection
+                        const utterance = new SpeechSynthesisUtterance(`${verse.text}`);
+                        if (voices[selectedVoiceIndex]) { utterance.voice = voices[selectedVoiceIndex]; }
+                        utterance.onend = () => { currentVerseIndex++; speakNextVerse(); };
+                        utterance.onerror = (e) => { console.error("Erro na fala", e); setIsSpeaking(false); isSpeakingRef.current = false; };
                         speechRef.current = utterance;
                         window.speechSynthesis.speak(utterance);
                     };
-
-                    // Inicia a leitura
-                    window.speechSynthesis.cancel(); // Limpa fila anterior
-                    speakNextVerse();
+                    window.speechSynthesis.cancel(); speakNextVerse();
                 }
             };
 
-            // --- LÓGICA DE MARCA-TEXTO (HIGHLIGHT) ---
             const highlightColors = [
-                { color: '#fef08a', name: 'Amarelo', class: 'bg-yellow-200' },
-                { color: '#bbf7d0', name: 'Verde', class: 'bg-green-200' },
-                { color: '#bfdbfe', name: 'Azul', class: 'bg-blue-200' },
-                { color: '#fbcfe8', name: 'Rosa', class: 'bg-pink-200' },
-                { color: '#e9d5ff', name: 'Roxo', class: 'bg-purple-200' },
+                { color: '#fef08a', name: 'Amarelo', class: 'bg-yellow-200' }, { color: '#bbf7d0', name: 'Verde', class: 'bg-green-200' }, { color: '#bfdbfe', name: 'Azul', class: 'bg-blue-200' },
+                { color: '#fbcfe8', name: 'Rosa', class: 'bg-pink-200' }, { color: '#e9d5ff', name: 'Roxo', class: 'bg-purple-200' },
             ];
 
             const handleVerseMouseUp = (verseNum) => {
                 const selection = window.getSelection();
-                // Verifica se houve seleção de texto OU se é um clique direto no versículo (para facilitar mobile)
-                // Permitimos marcar clicando no paragrafo todo se a intenção for estudo
-                
                 if (!chapterContent) return;
                 const bookName = chapterContent.book.name;
                 const chapterNum = chapterContent.chapter.number;
-                
-                // CHAVE ÚNICA BASEADA NO LIVRO E CAPÍTULO ATUAL
                 const key = `${bookName}-${chapterNum}-${verseNum}`;
-                
-                setHighlights(prev => {
-                    const newHighlights = { ...prev };
-                    // Se já estiver marcado com a MESMA cor, remove (toggle off)
-                    if (newHighlights[key] === activeHighlightColor) {
-                        delete newHighlights[key];
-                    } else {
-                        // Se não estiver marcado ou for outra cor, aplica a cor atual
-                        newHighlights[key] = activeHighlightColor;
-                    }
-                    return newHighlights;
-                });
-                
-                // Remove a seleção azul nativa do navegador para mostrar o destaque
+                setHighlights(prev => { const newHighlights = { ...prev }; if (newHighlights[key] === activeHighlightColor) { delete newHighlights[key]; } else { newHighlights[key] = activeHighlightColor; } return newHighlights; });
                 if (selection) selection.removeAllRanges();
             };
 
@@ -970,7 +1495,6 @@
                 if (!chapterContent) return {};
                 const bookName = chapterContent.book.name;
                 const chapterNum = chapterContent.chapter.number;
-                
                 const key = `${bookName}-${chapterNum}-${verseNum}`;
                 const color = highlights[key];
                 if (!color) return {};
@@ -1018,7 +1542,6 @@
             const shareCard = async () => { const canvas = canvasRef.current; if (!canvas) return; canvas.toBlob(async (blob) => { const file = new File([blob], "cartao_sistema_vida.png", { type: "image/png" }); if (navigator.share) { try { await navigator.share({ files: [file], title: 'Sistema Vida', text: cardText }); } catch (error) { console.log('Erro partilha:', error); } } else { alert("Partilha direta não suportada. Baixe a imagem primeiro."); } }); };
 
             const gerarQRCodeVisual = (texto) => { if (!qrCodeRef.current) return;
-                // LIMPAR O CONTAINER ANTES DE GERAR NOVO (FIX PARA BUGS DE QRCODE)
                 qrCodeRef.current.innerHTML = '';
                 new QRCode(qrCodeRef.current, { text: texto, width: 256, height: 256, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.H });
             };
@@ -1026,11 +1549,7 @@
             const handleGerarUrl = () => { if(qrUrl) gerarQRCodeVisual(qrUrl); else alert("Digite uma URL."); };
             const handleGerarWifi = () => { if(qrWifiSsid) gerarQRCodeVisual(`WIFI:T:WPA;S:${qrWifiSsid};P:${qrWifiPass};;`); else alert("SSID é obrigatório."); };
             const handleGerarPix = () => { if (!qrPixKey || !qrPixName || !qrPixCity) { alert("Chave, Nome e Cidade são obrigatórios."); return; } const merchantAccountInfo = [formatarEMV('00', 'br.gov.bcb.pix'), formatarEMV('01', qrPixKey)].join(''); let brCode = [formatarEMV('00', '01'), formatarEMV('26', merchantAccountInfo), formatarEMV('52', '0000'), formatarEMV('53', '986')]; if (qrPixAmount) { const valor = parseFloat(qrPixAmount.replace(",", ".")).toFixed(2); brCode.push(formatarEMV('54', valor)); } brCode.push(formatarEMV('58', 'BR')); brCode.push(formatarEMV('59', simplificarTexto(qrPixName).substring(0, 25))); brCode.push(formatarEMV('60', simplificarTexto(qrPixCity).substring(0, 15))); brCode.push(formatarEMV('62', formatarEMV('05', '***'))); brCode.push('6304'); const stringPIX = brCode.join(''); const brCodeCompleto = stringPIX + crc16(stringPIX); gerarQRCodeVisual(brCodeCompleto); };
-            const downloadQRCode = () => { 
-                if (!qrCodeRef.current) return;
-                const img = qrCodeRef.current.querySelector('img'); 
-                if (img) { const link = document.createElement('a'); link.href = img.src; link.download = 'qrcode.png'; link.click(); } 
-            };
+            const downloadQRCode = () => { if (!qrCodeRef.current) return; const img = qrCodeRef.current.querySelector('img'); if (img) { const link = document.createElement('a'); link.href = img.src; link.download = 'qrcode.png'; link.click(); } };
 
             return (
                 <div className="min-h-screen flex flex-col font-sans">
@@ -1040,19 +1559,8 @@
                         </div>
                     )}
                     
-                    {/* PLAYER DE RÁDIO PERSISTENTE - FORA DAS ABAS PARA NÃO PARAR */}
                     <div style={{display: 'none'}}>
-                        <audio 
-                            ref={audioRef} 
-                            src="https://live.hunter.fm/gospel_stream?ag=mp3" 
-                            crossOrigin="anonymous"
-                            onPlay={() => setIsPlayingRadio(true)}
-                            onPause={() => setIsPlayingRadio(false)}
-                            onError={() => {
-                                console.log("Erro no stream de áudio");
-                                setIsPlayingRadio(false);
-                            }}
-                        ></audio>
+                        <audio ref={audioRef} src="https://live.hunter.fm/gospel_stream?ag=mp3" crossOrigin="anonymous" onPlay={() => setIsPlayingRadio(true)} onPause={() => setIsPlayingRadio(false)} onError={() => { console.log("Erro no stream de áudio"); setIsPlayingRadio(false); }}></audio>
                     </div>
 
                     <header className="bg-red-800 text-white shadow-lg sticky top-0 z-50 no-print">
@@ -1105,17 +1613,8 @@
                                 </div>
                                 <div className={`w-full md:w-64 bg-gray-50 border-r p-4 overflow-y-auto transition-all duration-300 ease-in-out ${showBibleNav ? 'block' : 'hidden'} md:block`}>
                                     <div className="hidden md:block"><BackButton /></div>
-                                    <select value={selectedBook} onChange={(e) => {
-                                        const newBook = e.target.value;
-                                        setSelectedBook(newBook);
-                                        setSelectedChapter(1); 
-                                        fetchChapter(newBook, 1);
-                                    }} className="w-full p-2 mb-4 border rounded text-gray-800">{bibleBooks.map(b => <option key={b} value={b}>{b}</option>)}</select>
-                                    <div className="grid grid-cols-5 gap-1">{[...Array(50)].map((_, i) => (<button key={i} onClick={() => {
-                                        setSelectedChapter(i+1);
-                                        fetchChapter(selectedBook, i+1); 
-                                        setShowBibleNav(false);
-                                    }} className={`p-1 text-xs rounded ${selectedChapter===i+1?'bg-yellow-500 text-white':'bg-gray-200 text-gray-700'}`}>{i+1}</button>))}</div>
+                                    <select value={selectedBook} onChange={(e) => { const newBook = e.target.value; setSelectedBook(newBook); setSelectedChapter(1); fetchChapter(newBook, 1); }} className="w-full p-2 mb-4 border rounded text-gray-800">{bibleBooks.map(b => <option key={b} value={b}>{b}</option>)}</select>
+                                    <div className="grid grid-cols-5 gap-1">{[...Array(50)].map((_, i) => (<button key={i} onClick={() => { setSelectedChapter(i+1); fetchChapter(selectedBook, i+1); setShowBibleNav(false); }} className={`p-1 text-xs rounded ${selectedChapter===i+1?'bg-yellow-500 text-white':'bg-gray-200 text-gray-700'}`}>{i+1}</button>))}</div>
                                     <div className="mt-4 pt-4 border-t"><label className="text-xs font-bold text-gray-500">VOZ</label><select className="w-full p-2 border rounded text-xs text-gray-800" onChange={(e)=>setSelectedVoiceIndex(e.target.value)}>{voices.map((v,k)=><option key={k} value={k}>{v.name.slice(0,20)}</option>)}</select></div>
                                 </div>
                                 <div className={`flex-1 p-8 overflow-y-auto relative bible-content-area ${showBibleNav ? 'hidden md:block' : 'block'}`}>
@@ -1123,41 +1622,13 @@
                                         <>
                                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b pb-4 gap-4">
                                                 <h2 className="text-3xl font-serif font-bold text-red-900">{chapterContent.book.name} {chapterContent.chapter.number}</h2>
-                                                
                                                 <div className="flex flex-col items-end gap-2">
-                                                    {/* Seletor de Cor do Marca Texto */}
-                                                    <div className="flex items-center gap-2 bg-gray-100 p-2 rounded-lg">
-                                                        <span className="text-xs font-bold text-gray-500">Marcador:</span>
-                                                        {highlightColors.map((c) => (
-                                                            <button
-                                                                key={c.color}
-                                                                onClick={() => setActiveHighlightColor(c.color)}
-                                                                className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${activeHighlightColor === c.color ? 'border-gray-600 scale-110 shadow-sm' : 'border-transparent'}`}
-                                                                style={{ backgroundColor: c.color }}
-                                                                title={c.name}
-                                                            />
-                                                        ))}
-                                                    </div>
-                                                    
-                                                    <button onClick={toggleNarrator} className={`p-2 rounded-full flex items-center gap-2 text-sm font-bold transition-colors ${isSpeaking?'bg-red-100 text-red-600':'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                                                        <IconWrapper name={isSpeaking?'square':'volume-2'} size={16}/> {isSpeaking ? 'Parar Leitura' : 'Ouvir Capítulo'}
-                                                    </button>
+                                                    <div className="flex items-center gap-2 bg-gray-100 p-2 rounded-lg"><span className="text-xs font-bold text-gray-500">Marcador:</span>{highlightColors.map((c) => (<button key={c.color} onClick={() => setActiveHighlightColor(c.color)} className={`w-6 h-6 rounded-full border-2 transition-transform hover:scale-110 ${activeHighlightColor === c.color ? 'border-gray-600 scale-110 shadow-sm' : 'border-transparent'}`} style={{ backgroundColor: c.color }} title={c.name} />))}</div>
+                                                    <button onClick={toggleNarrator} className={`p-2 rounded-full flex items-center gap-2 text-sm font-bold transition-colors ${isSpeaking?'bg-red-100 text-red-600':'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}><IconWrapper name={isSpeaking?'square':'volume-2'} size={16}/> {isSpeaking ? 'Parar Leitura' : 'Ouvir Capítulo'}</button>
                                                 </div>
                                             </div>
-                                            
                                             <div className="space-y-4 font-serif text-gray-800" style={{fontSize: fontSize}}>
-                                                {chapterContent.verses?.map(v => (
-                                                    <p 
-                                                        key={v.number} 
-                                                        onMouseUp={() => handleVerseMouseUp(v.number)}
-                                                        style={getVerseHighlightStyle(v.number)}
-                                                        className="p-1 rounded transition-all duration-300 cursor-text hover:bg-gray-50 leading-relaxed"
-                                                        title="Selecione ou clique para marcar/desmarcar"
-                                                    >
-                                                        <span className="text-yellow-600 font-bold text-xs mr-2 select-none align-top">{v.number}</span>
-                                                        {v.text}
-                                                    </p>
-                                                ))}
+                                                {chapterContent.verses?.map(v => (<p key={v.number} onMouseUp={() => handleVerseMouseUp(v.number)} style={getVerseHighlightStyle(v.number)} className="p-1 rounded transition-all duration-300 cursor-text hover:bg-gray-50 leading-relaxed" title="Selecione ou clique para marcar/desmarcar"><span className="text-yellow-600 font-bold text-xs mr-2 select-none align-top">{v.number}</span>{v.text}</p>))}
                                             </div>
                                         </>
                                     )}
@@ -1181,21 +1652,8 @@
                                 <div className="grid md:grid-cols-2 gap-8">
                                     <div className="space-y-4">
                                         <textarea value={cardText} onChange={(e)=>setCardText(e.target.value)} className="w-full p-3 border rounded h-32 text-gray-800" placeholder="Mensagem..."></textarea>
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <span className="text-sm font-bold text-gray-600">Cor do Texto:</span>
-                                            {["#ffffff", "#000000", "#228B22", "#FFD700", "#C0C0C0", "#FF69B4", "#0000FF", "#FF0000", "#9370DB"].map(color => (
-                                                <button key={color} onClick={() => setTextColor(color)} className={`w-6 h-6 rounded-full border ${textColor === color ? "ring-2 ring-offset-2 ring-gray-400" : ""}`} style={{backgroundColor: color}} title={color}></button>
-                                            ))}
-                                        </div>
-                                        <div className="flex gap-2 flex-wrap">
-                                            <input type="text" value={imageSearchQuery} onChange={(e)=>setImageSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearchImage()} placeholder="Buscar imagem (ex: Cruz)..." className="flex-1 p-2 border rounded text-sm text-gray-800" />
-                                            <div className="w-full flex gap-2 mt-1">
-                                                <input type="text" value={customImageUrl} onChange={(e)=>setCustomImageUrl(e.target.value)} placeholder="Ou cole um link aqui..." className="flex-1 p-2 border rounded text-sm text-gray-800" />
-                                                <button onClick={handleCustomImage} className="bg-yellow-500 text-white px-4 py-2 rounded text-sm hover:bg-yellow-600 transition-colors flex items-center gap-2" title="Usar Link"><IconWrapper name="link" size={16}/> Usar</button>
-                                            </div>
-                                            <button onClick={handleSearchImage} disabled={searchingImage} className="bg-red-700 text-white px-4 py-2 rounded text-sm hover:bg-red-800 transition-colors flex-1" title="Buscar Imagem">{searchingImage ? '...' : <><IconWrapper name="search" size={16}/> Buscar Imagem</>}</button>
-                                            <label className="bg-gray-200 text-gray-700 px-4 py-2 rounded cursor-pointer text-sm hover:bg-gray-300 transition-colors w-full text-center" title="Carregar foto"><input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} /><IconWrapper name="image" size={16}/> Carregar do Dispositivo</label>
-                                        </div>
+                                        <div className="flex items-center gap-3 mb-2"><span className="text-sm font-bold text-gray-600">Cor do Texto:</span>{["#ffffff", "#000000", "#228B22", "#FFD700", "#C0C0C0", "#FF69B4", "#0000FF", "#FF0000", "#9370DB"].map(color => (<button key={color} onClick={() => setTextColor(color)} className={`w-6 h-6 rounded-full border ${textColor === color ? "ring-2 ring-offset-2 ring-gray-400" : ""}`} style={{backgroundColor: color}} title={color}></button>))}</div>
+                                        <div className="flex gap-2 flex-wrap"><input type="text" value={imageSearchQuery} onChange={(e)=>setImageSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearchImage()} placeholder="Buscar imagem (ex: Cruz)..." className="flex-1 p-2 border rounded text-sm text-gray-800" /><div className="w-full flex gap-2 mt-1"><input type="text" value={customImageUrl} onChange={(e)=>setCustomImageUrl(e.target.value)} placeholder="Ou cole um link aqui..." className="flex-1 p-2 border rounded text-sm text-gray-800" /><button onClick={handleCustomImage} className="bg-yellow-500 text-white px-4 py-2 rounded text-sm hover:bg-yellow-600 transition-colors flex items-center gap-2" title="Usar Link"><IconWrapper name="link" size={16}/> Usar</button></div><button onClick={handleSearchImage} disabled={searchingImage} className="bg-red-700 text-white px-4 py-2 rounded text-sm hover:bg-red-800 transition-colors flex-1" title="Buscar Imagem">{searchingImage ? '...' : <><IconWrapper name="search" size={16}/> Buscar Imagem</>}</button><label className="bg-gray-200 text-gray-700 px-4 py-2 rounded cursor-pointer text-sm hover:bg-gray-300 transition-colors w-full text-center" title="Carregar foto"><input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} /><IconWrapper name="image" size={16}/> Carregar do Dispositivo</label></div>
                                         <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto">{bgList.map(bg => (<div key={bg.id} onClick={()=>setSelectedBg(bg)} className={`h-12 bg-gray-200 cursor-pointer rounded border-2 ${selectedBg.id === bg.id ? 'border-yellow-500' : 'border-transparent'}`} style={{background: bg.type==='gradient'?bg.gradient:`url(${bg.url}) center/cover`}}></div>))}</div>
                                         <div className="flex gap-2"><button onClick={downloadCard} className="flex-1 bg-red-700 text-white font-bold py-3 rounded hover:bg-red-800 flex justify-center gap-2"><IconWrapper name="download"/> Baixar</button><button onClick={shareCard} className="bg-yellow-500 text-white font-bold py-3 px-4 rounded hover:bg-yellow-600" title="Partilhar"><IconWrapper name="share-2"/></button></div>
                                         <p className="text-xs text-gray-500 text-center">Para Instagram: Baixe a imagem e poste manualmente.</p>
@@ -1211,174 +1669,9 @@
                                 {nameResult && <div className="space-y-4">{nameResult.map((item, i) => (<div key={i} className="bg-white p-6 rounded shadow border-l-4 border-yellow-500"><h3 className="font-bold text-gray-800">{item.name}</h3><p className="text-gray-600">{item.meaning}</p></div>))}</div>}
                             </div>
                         )}
-                        {/* --- FINANCEIRO (NOVO) --- */}
+                        {/* --- FINANCEIRO (SUBSTITUÍDO PELO FINANCIAL APP) --- */}
                         {activeTab === 'finance' && (
-                            <div className="max-w-4xl mx-auto animate-fadeIn">
-                                <BackButton />
-                                
-                                <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
-                                    <h2 className="text-2xl font-bold flex items-center gap-2 text-red-800">
-                                        <IconWrapper name="dollar-sign" className="text-yellow-500"/> Agenda Financeira
-                                    </h2>
-                                    <div className="flex gap-2 w-full md:w-auto">
-                                        <button 
-                                            onClick={exportFinancialData} 
-                                            className="flex-1 md:flex-none bg-green-600 text-white px-4 py-2 rounded-lg font-bold flex justify-center items-center gap-2 hover:bg-green-700 shadow-lg transition-all"
-                                            title="Baixar arquivo para guardar"
-                                        >
-                                            <IconWrapper name="download" size={18} /> Baixar Backup
-                                        </button>
-                                        <label className="flex-1 md:flex-none bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex justify-center items-center gap-2 hover:bg-blue-700 shadow-lg transition-all cursor-pointer" title="Carregar arquivo salvo">
-                                            <input type="file" accept=".json" onChange={importFinancialData} className="hidden" />
-                                            <IconWrapper name="refresh-cw" size={18} /> Restaurar
-                                        </label>
-                                    </div>
-                                </div>
-
-                                {/* RESUMO CARDS */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                                    <div className="bg-green-100 p-6 rounded-xl border border-green-200 shadow-sm">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-sm font-bold text-green-700">ENTRADAS</span>
-                                            <IconWrapper name="trending-up" className="text-green-600" size={20}/>
-                                        </div>
-                                        <div className="text-2xl font-bold text-green-800">
-                                            R$ {financialSummary.income.toFixed(2)}
-                                        </div>
-                                    </div>
-                                    <div className="bg-red-100 p-6 rounded-xl border border-red-200 shadow-sm">
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-sm font-bold text-red-700">SAÍDAS</span>
-                                            <IconWrapper name="trending-down" className="text-red-600" size={20}/>
-                                        </div>
-                                        <div className="text-2xl font-bold text-red-800">
-                                            R$ {financialSummary.expense.toFixed(2)}
-                                        </div>
-                                    </div>
-                                    <div className={`bg-white p-6 rounded-xl border-l-4 shadow-sm ${financialSummary.balance >= 0 ? 'border-green-500' : 'border-red-500'}`}>
-                                        <div className="flex justify-between items-center mb-2">
-                                            <span className="text-sm font-bold text-gray-600">SALDO ATUAL</span>
-                                            <IconWrapper name="dollar-sign" className="text-gray-400" size={20}/>
-                                        </div>
-                                        <div className={`text-2xl font-bold ${financialSummary.balance >= 0 ? 'text-gray-800' : 'text-red-600'}`}>
-                                            R$ {financialSummary.balance.toFixed(2)}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* FORMULÁRIO */}
-                                <div className="bg-white p-6 rounded-xl shadow-lg mb-8 border border-gray-100">
-                                    <h3 className="font-bold text-gray-800 mb-4 border-b pb-2">Nova Transação</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">Data Vencimento</label>
-                                            <input type="date" value={finForm.date} onChange={e => setFinForm({...finForm, date: e.target.value})} className="w-full p-2 border rounded bg-gray-50 text-gray-800" />
-                                        </div>
-                                        <div className="md:col-span-2">
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">Descrição</label>
-                                            <input type="text" placeholder="Ex: Dízimo, Mercado..." value={finForm.desc} onChange={e => setFinForm({...finForm, desc: e.target.value})} className="w-full p-2 border rounded bg-gray-50 text-gray-800" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">Valor Total (R$)</label>
-                                            <input type="number" step="0.01" placeholder="0.00" value={finForm.value} onChange={e => setFinForm({...finForm, value: e.target.value})} className="w-full p-2 border rounded bg-gray-50 text-gray-800" />
-                                        </div>
-                                        
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">Tipo</label>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => setFinForm({...finForm, type: 'income'})} className={`flex-1 py-2 rounded text-sm font-bold ${finForm.type === 'income' ? 'bg-green-600 text-white' : 'bg-gray-200 text-gray-600'}`}>Receita</button>
-                                                <button onClick={() => setFinForm({...finForm, type: 'expense'})} className={`flex-1 py-2 rounded text-sm font-bold ${finForm.type === 'expense' ? 'bg-red-600 text-white' : 'bg-gray-200 text-gray-600'}`}>Despesa</button>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">Categoria</label>
-                                            <select value={finForm.category} onChange={e => setFinForm({...finForm, category: e.target.value})} className="w-full p-2 border rounded bg-gray-50 text-gray-800">
-                                                <option>Dízimo</option>
-                                                <option>Oferta</option>
-                                                <option>Alimentação</option>
-                                                <option>Contas (Água/Luz)</option>
-                                                <option>Transporte</option>
-                                                <option>Saúde</option>
-                                                <option>Lazer</option>
-                                                <option>Salário</option>
-                                                <option>Outros</option>
-                                            </select>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">Pagamento</label>
-                                            <select value={finForm.method} onChange={e => setFinForm({...finForm, method: e.target.value})} className="w-full p-2 border rounded bg-gray-50 text-gray-800">
-                                                <option>Dinheiro</option>
-                                                <option>Cartão Crédito</option>
-                                                <option>Cartão Débito</option>
-                                                <option>Pix</option>
-                                                <option>Transferência</option>
-                                            </select>
-                                        </div>
-                                        
-                                        {/* Campo de Parcelas - Só aparece se for Cartão Crédito */}
-                                        {finForm.method === 'Cartão Crédito' && (
-                                            <div>
-                                                <label className="block text-xs font-bold text-gray-500 mb-1">Parcelas (x)</label>
-                                                <input type="number" min="1" max="48" value={finForm.installments} onChange={e => setFinForm({...finForm, installments: e.target.value})} className="w-full p-2 border rounded bg-gray-50 text-gray-800" />
-                                            </div>
-                                        )}
-
-                                        <div className={`flex items-end ${finForm.method !== 'Cartão Crédito' ? 'md:col-span-1' : ''}`}>
-                                            <button onClick={handleAddFinancialEntry} className="w-full bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
-                                                <IconWrapper name="plus" size={18}/> Adicionar
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* LISTA DE TRANSAÇÕES */}
-                                <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-100">
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="bg-gray-50 text-gray-600 font-bold uppercase text-xs">
-                                                <tr>
-                                                    <th className="p-4">Vencimento</th>
-                                                    <th className="p-4">Descrição</th>
-                                                    <th className="p-4">Categoria</th>
-                                                    <th className="p-4">Método</th>
-                                                    <th className="p-4 text-right">Valor</th>
-                                                    <th className="p-4 text-center">Ação</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-100">
-                                                {financialEntries.length === 0 ? (
-                                                    <tr>
-                                                        <td colSpan="6" className="p-8 text-center text-gray-400">Nenhuma movimentação registada.</td>
-                                                    </tr>
-                                                ) : (
-                                                    financialEntries.sort((a,b) => new Date(a.date) - new Date(b.date)).map((item) => (
-                                                        <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                                                            <td className="p-4 text-gray-600 whitespace-nowrap">
-                                                                {new Date(item.date).toLocaleDateString('pt-BR')}
-                                                                {new Date(item.date) < new Date() && item.type === 'expense' && <span className="ml-2 text-[10px] text-red-500 bg-red-100 px-1 rounded">Vencido</span>}
-                                                            </td>
-                                                            <td className="p-4 font-medium text-gray-800">{item.desc}</td>
-                                                            <td className="p-4 text-gray-500"><span className="px-2 py-1 bg-gray-100 rounded text-xs">{item.category}</span></td>
-                                                            <td className="p-4 text-gray-500 flex items-center gap-1">
-                                                                {item.method.includes('Cartão') && <IconWrapper name="credit-card" size={14}/>}
-                                                                {item.method}
-                                                            </td>
-                                                            <td className={`p-4 text-right font-bold ${item.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                                                                {item.type === 'income' ? '+' : '-'} R$ {item.value.toFixed(2)}
-                                                            </td>
-                                                            <td className="p-4 text-center">
-                                                                <button onClick={() => removeFinancialEntry(item.id)} className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 transition-colors" title="Apagar">
-                                                                    <IconWrapper name="trash-2" size={16}/>
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ))
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
+                            <FinancialModule onBack={() => setActiveTab('home')} />
                         )}
                         {/* --- PREGAÇÃO --- */}
                         {activeTab === 'preaching' && (
@@ -1392,191 +1685,37 @@
                         {activeTab === 'games' && (
                             <div className="max-w-4xl mx-auto bg-white rounded-xl shadow p-8 animate-fadeIn text-center relative overflow-hidden min-h-[500px]">
                                 <BackButton />
-                                
-                                {/* --- MENU DE JOGOS --- */}
                                 {gameMode === 'menu' && (
                                     <div className="animate-fadeIn">
-                                        <h2 className="text-2xl font-bold mb-8 text-red-800 flex justify-center items-center gap-2">
-                                            <IconWrapper name="gamepad-2" className="text-yellow-500"/> Área de Jogos
-                                        </h2>
+                                        <h2 className="text-2xl font-bold mb-8 text-red-800 flex justify-center items-center gap-2"><IconWrapper name="gamepad-2" className="text-yellow-500"/> Área de Jogos</h2>
                                         <div className="grid md:grid-cols-2 gap-6">
-                                            <div onClick={startQuiz} className="bg-yellow-50 border-2 border-yellow-200 p-8 rounded-xl cursor-pointer hover:shadow-lg hover:scale-105 transition-transform">
-                                                <div className="text-4xl mb-4">📖</div>
-                                                <h3 className="text-xl font-bold text-gray-800 mb-2">Quiz Bíblico</h3>
-                                                <p className="text-gray-600 text-sm">Desafio de 10 minutos. Teste seus conhecimentos!</p>
-                                            </div>
-                                            <div onClick={startMemoryGame} className="bg-blue-50 border-2 border-blue-200 p-8 rounded-xl cursor-pointer hover:shadow-lg hover:scale-105 transition-transform">
-                                                <div className="text-4xl mb-4">🐶</div>
-                                                <h3 className="text-xl font-bold text-gray-800 mb-2">Jogo da Memória</h3>
-                                                <p className="text-gray-600 text-sm">Encontre os pares dos animais. Com sons!</p>
-                                            </div>
-                                            {/* NOVO: JOGO DA FORCA */}
-                                            <div onClick={startHangmanGame} className="bg-green-50 border-2 border-green-200 p-8 rounded-xl cursor-pointer hover:shadow-lg hover:scale-105 transition-transform md:col-span-2">
-                                                <div className="text-4xl mb-4">⚓</div>
-                                                <h3 className="text-xl font-bold text-gray-800 mb-2">Jogo da Forca</h3>
-                                                <p className="text-gray-600 text-sm">Adivinhe a palavra antes que o tempo acabe!</p>
-                                            </div>
+                                            <div onClick={startQuiz} className="bg-yellow-50 border-2 border-yellow-200 p-8 rounded-xl cursor-pointer hover:shadow-lg hover:scale-105 transition-transform"><div className="text-4xl mb-4">📖</div><h3 className="text-xl font-bold text-gray-800 mb-2">Quiz Bíblico</h3><p className="text-gray-600 text-sm">Desafio de 10 minutos. Teste seus conhecimentos!</p></div>
+                                            <div onClick={startMemoryGame} className="bg-blue-50 border-2 border-blue-200 p-8 rounded-xl cursor-pointer hover:shadow-lg hover:scale-105 transition-transform"><div className="text-4xl mb-4">🐶</div><h3 className="text-xl font-bold text-gray-800 mb-2">Jogo da Memória</h3><p className="text-gray-600 text-sm">Encontre os pares dos animais. Com sons!</p></div>
+                                            <div onClick={startHangmanGame} className="bg-green-50 border-2 border-green-200 p-8 rounded-xl cursor-pointer hover:shadow-lg hover:scale-105 transition-transform md:col-span-2"><div className="text-4xl mb-4">⚓</div><h3 className="text-xl font-bold text-gray-800 mb-2">Jogo da Forca</h3><p className="text-gray-600 text-sm">Adivinhe a palavra antes que o tempo acabe!</p></div>
                                         </div>
                                     </div>
                                 )}
-
-                                {/* --- QUIZ BÍBLICO --- */}
                                 {gameMode === 'quiz' && (
                                     <div className="animate-fadeIn">
-                                        <div className="flex justify-between items-center mb-6">
-                                            <button onClick={() => setGameMode('menu')} className="text-sm font-bold text-gray-500 hover:text-gray-700">← Voltar</button>
-                                            <h2 className="text-xl font-bold text-red-800">Quiz Bíblico</h2>
-                                            <div className="w-20"></div>
-                                        </div>
-
-                                        {!quizActive && !showQuizScore && !quizGameOver && (
-                                            <div className="space-y-6">
-                                                <p className="text-gray-600 mb-4">Responda a 10 perguntas sorteadas aleatoriamente. Cada acerto vale 10 pontos!</p>
-                                                <button onClick={startQuiz} className="bg-red-700 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-red-800">INICIAR AGORA</button>
-                                            </div>
-                                        )}
-
-                                        {quizActive && !showQuizScore && !quizGameOver && currentQuizQuestions.length > 0 && (
-                                            <div>
-                                                <div className="flex justify-between items-center mb-6 bg-gray-100 p-3 rounded-lg">
-                                                    <div className="text-red-800 font-bold flex items-center gap-2"><div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>{formatTime(quizTimer)}</div>
-                                                    <div className="text-gray-600 font-bold text-sm">Questão {quizIndex + 1}/10</div>
-                                                    <div className="text-yellow-600 font-bold">{quizScore} pts</div>
-                                                </div>
-                                                <h3 className="text-xl font-bold mb-8 text-gray-800 min-h-[60px] flex items-center justify-center">{currentQuizQuestions[quizIndex].question}</h3>
-                                                <div className="grid gap-3">
-                                                    {currentQuizQuestions[quizIndex].options.map((opt, i) => (
-                                                        <button key={i} onClick={() => handleQuizAnswer(i)} className="p-4 border-2 border-gray-200 rounded-xl hover:bg-yellow-50 hover:border-yellow-500 font-medium text-gray-700 transition-all text-left relative group">
-                                                            <span className="absolute left-4 font-bold text-gray-300 group-hover:text-yellow-600">{['A','B','C','D'][i]}</span><span className="pl-8">{opt}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                        {showQuizScore && (
-                                            <div className="py-8">
-                                                <div className="mb-6">{quizScore >= 70 ? <IconWrapper name="check-circle" size={64} className="text-green-500 mx-auto mb-4"/> : <IconWrapper name="activity" size={64} className="text-yellow-500 mx-auto mb-4"/>}<h3 className="text-3xl font-bold text-gray-800 mb-2">{quizScore >= 70 ? "Parabéns!" : "Bom esforço!"}</h3></div>
-                                                <div className="text-5xl font-arcade text-red-800 mb-8">{quizScore} <span className="text-lg font-sans text-gray-500">pontos</span></div>
-                                                <button onClick={startQuiz} className="bg-yellow-500 text-white px-8 py-3 rounded-full font-bold hover:bg-yellow-600 shadow-lg flex items-center gap-2 mx-auto"><IconWrapper name="refresh-cw" size={20}/> Jogar Novamente</button>
-                                            </div>
-                                        )}
-                                        {quizGameOver && (
-                                            <div className="py-8">
-                                                <div className="mb-6 text-red-600"><IconWrapper name="x" size={64} className="mx-auto mb-4"/><h3 className="text-3xl font-bold mb-2">Tempo Esgotado!</h3></div>
-                                                <button onClick={startQuiz} className="bg-red-700 text-white px-8 py-3 rounded-full font-bold hover:bg-red-800 shadow-lg flex items-center gap-2 mx-auto"><IconWrapper name="refresh-cw" size={20}/> Tentar Novamente</button>
-                                            </div>
-                                        )}
+                                        <div className="flex justify-between items-center mb-6"><button onClick={() => setGameMode('menu')} className="text-sm font-bold text-gray-500 hover:text-gray-700">← Voltar</button><h2 className="text-xl font-bold text-red-800">Quiz Bíblico</h2><div className="w-20"></div></div>
+                                        {!quizActive && !showQuizScore && !quizGameOver && (<div className="space-y-6"><p className="text-gray-600 mb-4">Responda a 10 perguntas sorteadas aleatoriamente. Cada acerto vale 10 pontos!</p><button onClick={startQuiz} className="bg-red-700 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-red-800">INICIAR AGORA</button></div>)}
+                                        {quizActive && !showQuizScore && !quizGameOver && currentQuizQuestions.length > 0 && (<div><div className="flex justify-between items-center mb-6 bg-gray-100 p-3 rounded-lg"><div className="text-red-800 font-bold flex items-center gap-2"><div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>{formatTime(quizTimer)}</div><div className="text-gray-600 font-bold text-sm">Questão {quizIndex + 1}/10</div><div className="text-yellow-600 font-bold">{quizScore} pts</div></div><h3 className="text-xl font-bold mb-8 text-gray-800 min-h-[60px] flex items-center justify-center">{currentQuizQuestions[quizIndex].question}</h3><div className="grid gap-3">{currentQuizQuestions[quizIndex].options.map((opt, i) => (<button key={i} onClick={() => handleQuizAnswer(i)} className="p-4 border-2 border-gray-200 rounded-xl hover:bg-yellow-50 hover:border-yellow-500 font-medium text-gray-700 transition-all text-left relative group"><span className="absolute left-4 font-bold text-gray-300 group-hover:text-yellow-600">{['A','B','C','D'][i]}</span><span className="pl-8">{opt}</span></button>))}</div></div>)}
+                                        {showQuizScore && (<div className="py-8"><div className="mb-6">{quizScore >= 70 ? <IconWrapper name="check-circle" size={64} className="text-green-500 mx-auto mb-4"/> : <IconWrapper name="activity" size={64} className="text-yellow-500 mx-auto mb-4"/>}<h3 className="text-3xl font-bold text-gray-800 mb-2">{quizScore >= 70 ? "Parabéns!" : "Bom esforço!"}</h3></div><div className="text-5xl font-arcade text-red-800 mb-8">{quizScore} <span className="text-lg font-sans text-gray-500">pontos</span></div><button onClick={startQuiz} className="bg-yellow-500 text-white px-8 py-3 rounded-full font-bold hover:bg-yellow-600 shadow-lg flex items-center gap-2 mx-auto"><IconWrapper name="refresh-cw" size={20}/> Jogar Novamente</button></div>)}
+                                        {quizGameOver && (<div className="py-8"><div className="mb-6 text-red-600"><IconWrapper name="x" size={64} className="mx-auto mb-4"/><h3 className="text-3xl font-bold mb-2">Tempo Esgotado!</h3></div><button onClick={startQuiz} className="bg-red-700 text-white px-8 py-3 rounded-full font-bold hover:bg-red-800 shadow-lg flex items-center gap-2 mx-auto"><IconWrapper name="refresh-cw" size={20}/> Tentar Novamente</button></div>)}
                                     </div>
                                 )}
-
-                                {/* --- JOGO DA MEMÓRIA --- */}
                                 {gameMode === 'memory' && (
                                     <div className="animate-fadeIn font-inter">
-                                        <div className="flex justify-between items-center mb-6">
-                                            <button onClick={() => setGameMode('menu')} className="text-sm font-bold text-gray-500 hover:text-gray-700">← Voltar</button>
-                                            <h2 className="text-xl font-bold text-blue-600">Jogo da Memória</h2>
-                                            <div className="text-sm font-bold text-gray-600">Jogadas: {memoryMoves}</div>
-                                        </div>
-
-                                        {!memoryWin ? (
-                                            <div className="grid grid-cols-4 gap-4 justify-center max-w-sm mx-auto">
-                                                {memoryCards.map((card) => (
-                                                    <div key={card.id} className={`memory-card h-20 w-full ${card.isFlipped || card.isMatched ? 'is-flipped' : ''}`} onClick={() => handleMemoryCardClick(card)}>
-                                                        <div className="memory-card-inner">
-                                                            <div className="memory-card-back flex items-center justify-center text-2xl font-bold">?</div>
-                                                            <div className="memory-card-front flex items-center justify-center text-4xl">{card.emoji}</div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="py-12">
-                                                <h3 className="text-3xl font-bold text-blue-600 mb-4">Você Venceu!</h3>
-                                                <button onClick={startMemoryGame} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors text-lg">Reiniciar Jogo</button>
-                                            </div>
-                                        )}
+                                        <div className="flex justify-between items-center mb-6"><button onClick={() => setGameMode('menu')} className="text-sm font-bold text-gray-500 hover:text-gray-700">← Voltar</button><h2 className="text-xl font-bold text-blue-600">Jogo da Memória</h2><div className="text-sm font-bold text-gray-600">Jogadas: {memoryMoves}</div></div>
+                                        {!memoryWin ? (<div className="grid grid-cols-4 gap-4 justify-center max-w-sm mx-auto">{memoryCards.map((card) => (<div key={card.id} className={`memory-card h-20 w-full ${card.isFlipped || card.isMatched ? 'is-flipped' : ''}`} onClick={() => handleMemoryCardClick(card)}><div className="memory-card-inner"><div className="memory-card-back flex items-center justify-center text-2xl font-bold">?</div><div className="memory-card-front flex items-center justify-center text-4xl">{card.emoji}</div></div></div>))}</div>) : (<div className="py-12"><h3 className="text-3xl font-bold text-blue-600 mb-4">Você Venceu!</h3><button onClick={startMemoryGame} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg transition-colors text-lg">Reiniciar Jogo</button></div>)}
                                     </div>
                                 )}
-
-                                {/* --- JOGO DA FORCA (NOVO) --- */}
                                 {gameMode === 'hangman' && (
                                     <div className="animate-fadeIn font-inter w-full max-w-4xl mx-auto">
-                                         <div className="flex justify-between items-center mb-6">
-                                            <button onClick={() => setGameMode('menu')} className="text-sm font-bold text-gray-500 hover:text-gray-700">← Voltar</button>
-                                            <h2 className="text-xl font-bold text-blue-600">Jogo da Forca</h2>
-                                            <div className={`text-xl font-bold ${hangmanTimer <= 10 ? 'text-red-600 animate-pulse' : 'text-blue-600'}`}>{formatTime(hangmanTimer)}</div>
-                                        </div>
-                                        
-                                        {hangmanStatus === 'playing' ? (
-                                            <div className="flex flex-col md:flex-row gap-8">
-                                                {/* Coluna Esquerda: Forca */}
-                                                <div className="flex-1 flex flex-col items-center">
-                                                    <svg className="w-64 h-64 mb-4" viewBox="0 0 100 120">
-                                                        <line x1="10" y1="115" x2="90" y2="115" stroke="#6B7280" strokeWidth="4" />
-                                                        <line x1="30" y1="115" x2="30" y2="10" stroke="#6B7280" strokeWidth="4" />
-                                                        <line x1="30" y1="10" x2="70" y2="10" stroke="#6B7280" strokeWidth="4" />
-                                                        <line x1="70" y1="10" x2="70" y2="25" stroke="#6B7280" strokeWidth="4" />
-                                                        
-                                                        {/* Boneco Condicional */}
-                                                        <circle cx="70" cy="35" r="10" className="hangman-part" style={{opacity: hangmanWrong.length >= 1 ? 1 : 0}} fill="none" />
-                                                        <line x1="70" y1="45" x2="70" y2="75" className="hangman-part" style={{opacity: hangmanWrong.length >= 2 ? 1 : 0}} />
-                                                        <line x1="70" y1="55" x2="55" y2="45" className="hangman-part" style={{opacity: hangmanWrong.length >= 3 ? 1 : 0}} />
-                                                        <line x1="70" y1="55" x2="85" y2="45" className="hangman-part" style={{opacity: hangmanWrong.length >= 4 ? 1 : 0}} />
-                                                        <line x1="70" y1="75" x2="55" y2="95" className="hangman-part" style={{opacity: hangmanWrong.length >= 5 ? 1 : 0}} />
-                                                        <line x1="70" y1="75" x2="85" y2="95" className="hangman-part" style={{opacity: hangmanWrong.length >= 6 ? 1 : 0}} />
-                                                    </svg>
-                                                    <div className="text-red-500 font-bold text-xl mb-4">Erros: {hangmanWrong.length} / 6</div>
-                                                    
-                                                    {/* Palavra */}
-                                                    <div className="flex flex-wrap justify-center gap-2 mb-4">
-                                                        {hangmanWord.split('').map((char, idx) => (
-                                                            <div key={idx} className={`w-8 h-10 md:w-10 md:h-12 border-b-4 flex items-center justify-center text-2xl font-bold ${hangmanGuessed.includes(char) ? 'border-blue-500 text-blue-600' : 'border-gray-300 text-transparent'}`}>
-                                                                {char}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-
-                                                {/* Coluna Direita: Controles */}
-                                                <div className="flex-1">
-                                                    {hangmanWrong.length >= 3 && (
-                                                        <div className="mb-4 bg-green-100 text-green-700 p-3 rounded-lg font-bold animate-fadeIn">
-                                                            Dica: A categoria é {hangmanCategory}
-                                                        </div>
-                                                    )}
-                                                    <div className="flex flex-wrap justify-center gap-2">
-                                                        {'ABCDEFGHIJKLMNOPQRSTUVWXYZÇ'.split('').map(letter => (
-                                                            <button 
-                                                                key={letter}
-                                                                onClick={() => handleHangmanGuess(letter)}
-                                                                disabled={hangmanGuessed.includes(letter) || hangmanWrong.includes(letter)}
-                                                                className={`w-10 h-10 md:w-12 md:h-12 font-bold rounded-lg text-lg transition-all shadow-md ${
-                                                                    hangmanGuessed.includes(letter) || hangmanWrong.includes(letter) 
-                                                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-50' 
-                                                                    : 'bg-blue-100 hover:bg-blue-200 text-blue-800 active:scale-95'
-                                                                }`}
-                                                            >
-                                                                {letter}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="py-12 animate-fadeIn bg-white rounded-xl">
-                                                <h3 className={`text-4xl font-bold mb-4 ${hangmanStatus === 'won' ? 'text-green-600' : 'text-red-600'}`}>
-                                                    {hangmanStatus === 'won' ? 'Você Venceu!' : 'Fim de Jogo!'}
-                                                </h3>
-                                                <p className="text-gray-600 mb-2">A palavra era:</p>
-                                                <p className="text-4xl font-bold text-blue-600 mb-8 tracking-widest">{hangmanWord}</p>
-                                                <button onClick={startHangmanGame} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-colors text-lg flex items-center gap-2 mx-auto">
-                                                    <IconWrapper name="refresh-cw" size={24}/> Jogar Novamente
-                                                </button>
-                                            </div>
-                                        )}
+                                         <div className="flex justify-between items-center mb-6"><button onClick={() => setGameMode('menu')} className="text-sm font-bold text-gray-500 hover:text-gray-700">← Voltar</button><h2 className="text-xl font-bold text-blue-600">Jogo da Forca</h2><div className={`text-xl font-bold ${hangmanTimer <= 10 ? 'text-red-600 animate-pulse' : 'text-blue-600'}`}>{formatTime(hangmanTimer)}</div></div>
+                                        {hangmanStatus === 'playing' ? (<div className="flex flex-col md:flex-row gap-8"><div className="flex-1 flex flex-col items-center"><svg className="w-64 h-64 mb-4" viewBox="0 0 100 120"><line x1="10" y1="115" x2="90" y2="115" stroke="#6B7280" strokeWidth="4" /><line x1="30" y1="115" x2="30" y2="10" stroke="#6B7280" strokeWidth="4" /><line x1="30" y1="10" x2="70" y2="10" stroke="#6B7280" strokeWidth="4" /><line x1="70" y1="10" x2="70" y2="25" stroke="#6B7280" strokeWidth="4" /><circle cx="70" cy="35" r="10" className="hangman-part" style={{opacity: hangmanWrong.length >= 1 ? 1 : 0}} fill="none" /><line x1="70" y1="45" x2="70" y2="75" className="hangman-part" style={{opacity: hangmanWrong.length >= 2 ? 1 : 0}} /><line x1="70" y1="55" x2="55" y2="45" className="hangman-part" style={{opacity: hangmanWrong.length >= 3 ? 1 : 0}} /><line x1="70" y1="55" x2="85" y2="45" className="hangman-part" style={{opacity: hangmanWrong.length >= 4 ? 1 : 0}} /><line x1="70" y1="75" x2="55" y2="95" className="hangman-part" style={{opacity: hangmanWrong.length >= 5 ? 1 : 0}} /><line x1="70" y1="75" x2="85" y2="95" className="hangman-part" style={{opacity: hangmanWrong.length >= 6 ? 1 : 0}} /></svg><div className="text-red-500 font-bold text-xl mb-4">Erros: {hangmanWrong.length} / 6</div><div className="flex flex-wrap justify-center gap-2 mb-4">{hangmanWord.split('').map((char, idx) => (<div key={idx} className={`w-8 h-10 md:w-10 md:h-12 border-b-4 flex items-center justify-center text-2xl font-bold ${hangmanGuessed.includes(char) ? 'border-blue-500 text-blue-600' : 'border-gray-300 text-transparent'}`}>{char}</div>))}</div></div><div className="flex-1">{hangmanWrong.length >= 3 && (<div className="mb-4 bg-green-100 text-green-700 p-3 rounded-lg font-bold animate-fadeIn">Dica: A categoria é {hangmanCategory}</div>)}<div className="flex flex-wrap justify-center gap-2">{'ABCDEFGHIJKLMNOPQRSTUVWXYZÇ'.split('').map(letter => (<button key={letter} onClick={() => handleHangmanGuess(letter)} disabled={hangmanGuessed.includes(letter) || hangmanWrong.includes(letter)} className={`w-10 h-10 md:w-12 md:h-12 font-bold rounded-lg text-lg transition-all shadow-md ${hangmanGuessed.includes(letter) || hangmanWrong.includes(letter) ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-50' : 'bg-blue-100 hover:bg-blue-200 text-blue-800 active:scale-95'}`}>{letter}</button>))}</div></div></div>) : (<div className="py-12 animate-fadeIn bg-white rounded-xl"><h3 className={`text-4xl font-bold mb-4 ${hangmanStatus === 'won' ? 'text-green-600' : 'text-red-600'}`}>{hangmanStatus === 'won' ? 'Você Venceu!' : 'Fim de Jogo!'}</h3><p className="text-gray-600 mb-2">A palavra era:</p><p className="text-4xl font-bold text-blue-600 mb-8 tracking-widest">{hangmanWord}</p><button onClick={startHangmanGame} className="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-colors text-lg flex items-center gap-2 mx-auto"><IconWrapper name="refresh-cw" size={24}/> Jogar Novamente</button></div>)}
                                     </div>
                                 )}
-
                             </div>
                         )}
                         {/* --- QR CODE --- */}
@@ -1595,51 +1734,14 @@
                         {activeTab === 'radio' && (
                             <div className="max-w-4xl mx-auto animate-fadeIn">
                                 <BackButton /><h2 className="text-2xl font-bold text-center mb-6 flex justify-center gap-2 text-red-800"><IconWrapper name="radio" className="text-yellow-500"/> Rádio Gospel</h2>
-                                
-                                {/* PLAYER AO VIVO (NOVO) */}
                                 <div className="bg-gradient-to-r from-gray-900 to-gray-800 text-white rounded-xl shadow-xl overflow-hidden mb-8 border border-gray-700">
                                     <div className="p-6 md:p-8 flex flex-col items-center justify-center text-center">
                                         <div className="bg-red-600 text-xs font-bold px-3 py-1 rounded-full mb-4 animate-pulse">AO VIVO</div>
                                         <h3 className="text-2xl md:text-3xl font-bold mb-2">Rádio Gospel 24h</h3>
                                         <p className="text-gray-400 text-sm mb-8">Louvor e Adoração sem parar</p>
-                                        
-                                        {/* Visualizador de Áudio Simulado */}
-                                        <div className="h-12 flex items-center justify-center gap-1 mb-8">
-                                            {isPlayingRadio ? (
-                                                <>
-                                                    <div className="sound-bar h-8"></div>
-                                                    <div className="sound-bar h-12"></div>
-                                                    <div className="sound-bar h-6"></div>
-                                                    <div className="sound-bar h-10"></div>
-                                                    <div className="sound-bar h-4"></div>
-                                                </>
-                                            ) : (
-                                                <div className="h-1 w-32 bg-gray-700 rounded-full"></div>
-                                            )}
-                                        </div>
-
-                                        <button 
-                                            onClick={toggleRadio} 
-                                            className={`w-20 h-20 rounded-full flex items-center justify-center transition-all transform hover:scale-110 shadow-lg ${isPlayingRadio ? 'bg-yellow-500 text-gray-900' : 'bg-red-600 text-white'}`}
-                                        >
-                                            {isPlayingRadio ? 
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg> 
-                                                : 
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>
-                                            }
-                                        </button>
-                                        
-                                        <div className="mt-8 pt-6 border-t border-gray-700 w-full">
-                                            <p className="text-xs text-gray-400 mb-2">Procurando a Rádio Gospel Campinas?</p>
-                                            <a 
-                                                href="http://www.radiogospelcampinas.com.br/" 
-                                                target="_blank" 
-                                                rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-2 text-yellow-500 hover:text-yellow-400 font-bold text-sm underline"
-                                            >
-                                                <IconWrapper name="external-link" size={14}/> Ir para o Site Oficial (Link HTTP)
-                                            </a>
-                                        </div>
+                                        <div className="h-12 flex items-center justify-center gap-1 mb-8">{isPlayingRadio ? (<><div className="sound-bar h-8"></div><div className="sound-bar h-12"></div><div className="sound-bar h-6"></div><div className="sound-bar h-10"></div><div className="sound-bar h-4"></div></>) : (<div className="h-1 w-32 bg-gray-700 rounded-full"></div>)}</div>
+                                        <button onClick={toggleRadio} className={`w-20 h-20 rounded-full flex items-center justify-center transition-all transform hover:scale-110 shadow-lg ${isPlayingRadio ? 'bg-yellow-500 text-gray-900' : 'bg-red-600 text-white'}`}>{isPlayingRadio ? <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" /><rect x="14" y="4" width="4" height="16" /></svg> : <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3" /></svg>}</button>
+                                        <div className="mt-8 pt-6 border-t border-gray-700 w-full"><p className="text-xs text-gray-400 mb-2">Procurando a Rádio Gospel Campinas?</p><a href="http://www.radiogospelcampinas.com.br/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-yellow-500 hover:text-yellow-400 font-bold text-sm underline"><IconWrapper name="external-link" size={14}/> Ir para o Site Oficial (Link HTTP)</a></div>
                                     </div>
                                 </div>
                             </div>
@@ -1692,20 +1794,22 @@
                         )}
                     </main>
 
+                    {/* BOTÃO FLUTUANTE WHATSAPP (NOVO) */}
+                    <a 
+                        href="https://wa.me/5575998312170" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="fixed bottom-6 right-6 bg-green-500 text-white p-4 rounded-full shadow-2xl hover:bg-green-600 transition-all hover:scale-110 z-50 flex items-center justify-center animate-fadeIn"
+                        title="Fale conosco no WhatsApp"
+                    >
+                        <IconWrapper name="whatsapp" size={32} />
+                    </a>
+
                     {/* --- RODAPÉ / FOOTER --- */}
                     <footer className="bg-gray-900 text-gray-300 py-8 mt-auto no-print border-t border-gray-800">
                         <div className="container mx-auto px-4 text-center">
                             <p className="font-bold text-lg text-white mb-2">Direitos Autorais &copy; Jânio Carlos P J</p>
                             <p className="text-sm mb-4 text-gray-400">Sugestão e atualização: 28/11/2025</p>
-                            <a 
-                                href="https://wa.me/5575998312170" 
-                                target="_blank" 
-                                rel="noopener noreferrer" 
-                                className="inline-flex items-center gap-2 bg-green-600 text-white px-6 py-2 rounded-full hover:bg-green-700 transition-colors font-bold text-sm shadow-lg"
-                            >
-                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
-                                WhatsApp: +55 (75) 99831-2170
-                            </a>
                         </div>
                     </footer>
                 </div>
