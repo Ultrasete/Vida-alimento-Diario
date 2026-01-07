@@ -116,8 +116,7 @@
         .btn-restart:hover { transform: scale(1.05); filter: brightness(1.2); }
         .btn-restart.secondary { background: transparent; border: 2px solid var(--gold); color: var(--gold); box-shadow: none; }
         .btn-restart.secondary:hover { background: var(--gold); color: #000; }
-        .tic-cell:not(.x):not(.o):hover { background-color: #3f3f46; }
-
+        
         /* Estúdio e Outros */
         .studio-root { --primary: #e11d48; --primary-light: #ffebf0; --bg-body: #f4f6f9; --bg-card: #ffffff; --text-main: #1e293b; --text-sec: #64748b; --border: #e2e8f0; --input-bg: #f8fafc; --shadow: 0 10px 40px -10px rgba(0,0,0,0.08); font-family: 'Poppins', sans-serif; color: var(--text-main); padding-bottom: 80px; }
         .studio-root[data-theme="dark"] { --primary: #fb7185; --primary-light: #2d1b20; --bg-body: #0f172a; --bg-card: #1e293b; --text-main: #f1f5f9; --text-sec: #94a3b8; --border: #334155; --input-bg: #334155; --shadow: 0 10px 40px -10px rgba(0,0,0,0.5); }
@@ -261,8 +260,428 @@
 
     <script>
         // =================================================================
-        // JOGO 6: AERO STRIKER ULTIMATE
+        // LÓGICAS DOS JOGOS (Damas, Forca, Memória, Velha, Quiz e Aero)
+        // Integradas do arquivo 6x1jogos.html
         // =================================================================
+
+        // 1. DAMAS
+        function initDamas(container) {
+            container.innerHTML = `
+                <div class="w-full max-w-2xl mx-auto">
+                    <div id="damas-board-container" class="aspect-square w-full max-w-lg mx-auto bg-gray-900 border-4 border-gray-700 rounded-lg shadow-2xl overflow-hidden mb-4">
+                        <div id="damas-board" class="grid grid-cols-8 grid-rows-8 w-full h-full"></div>
+                    </div>
+                    <h1 class="text-3xl lg:text-4xl font-bold text-center text-white mb-4">Jogo de Damas</h1>
+                    <div class="flex flex-col sm:flex-row justify-between items-center bg-gray-700 p-3 rounded-lg shadow-lg mb-4">
+                        <div class="flex gap-2 mb-2 sm:mb-0">
+                            <button id="damas-new-game-2p" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-md shadow-md transition-colors duration-200">Novo Jogo (2P)</button>
+                            <button id="damas-new-game-ia" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-md shadow-md transition-colors duration-200">Novo Jogo (IA)</button>
+                        </div>
+                        <div id="damas-status-message" class="text-lg font-semibold text-center text-white">Comece um novo jogo!</div>
+                        <div id="damas-timer-display" class="text-2xl font-mono font-bold text-gray-300 w-24 text-center" title="Tempo restante">00:45</div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4 text-center">
+                        <div id="damas-p1-score-box" class="bg-gray-700 p-4 rounded-lg shadow-inner border-4 border-transparent transition-colors duration-300">
+                            <h2 class="text-xl font-bold text-red-400">JOGADOR 1 (Pretas)</h2>
+                            <p class="text-3xl font-mono text-white" id="damas-player1-score">12</p>
+                        </div>
+                        <div id="damas-p2-score-box" class="bg-gray-700 p-4 rounded-lg shadow-inner border-4 border-transparent transition-colors duration-300">
+                            <h2 class="text-xl font-bold text-gray-300">JOGADOR 2 (Brancas)</h2>
+                            <p class="text-3xl font-mono text-white" id="damas-player2-score">12</p>
+                        </div>
+                    </div>
+                </div>
+                <div id="damas-game-over-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-[150] hidden">
+                    <div class="bg-gray-800 rounded-lg shadow-xl p-6 md:p-8 text-center">
+                        <h2 id="damas-winner-message" class="text-3xl font-bold mb-6 text-white"></h2>
+                        <button id="damas-play-again-button" class="px-6 py-3 bg-green-600 hover:bg-green-700 text-white text-lg font-semibold rounded-lg shadow-md transition-colors duration-200">Jogar Novamente</button>
+                    </div>
+                </div>
+            `;
+            const EMPTY=0, P1=1, P2=2, P1_KING=3, P2_KING=4, BOARD_SIZE=8;
+            let board=[], currentPlayer=P1, gameMode='2P', selectedPiece=null, validMoves=[], mustCaptureMoves=[], isChainCapture=false, gameOver=true;
+            let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            let turnTimerID=null, turnTimeLeft=45;
+            const boardEl=container.querySelector('#damas-board'), statusEl=container.querySelector('#damas-status-message'), timerEl=container.querySelector('#damas-timer-display'), p1ScoreEl=container.querySelector('#damas-player1-score'), p2ScoreEl=container.querySelector('#damas-player2-score'), p1Box=container.querySelector('#damas-p1-score-box'), p2Box=container.querySelector('#damas-p2-score-box'), modalEl=container.querySelector('#damas-game-over-modal'), winnerMsgEl=container.querySelector('#damas-winner-message');
+
+            function initGame(mode) {
+                gameMode=mode; currentPlayer=P1; selectedPiece=null; validMoves=[]; mustCaptureMoves=[]; isChainCapture=false; gameOver=false;
+                stopTurnTimer();
+                board = Array(BOARD_SIZE).fill().map(() => Array(BOARD_SIZE).fill(EMPTY));
+                for(let r=0; r<BOARD_SIZE; r++) for(let c=0; c<BOARD_SIZE; c++) if((r+c)%2===1) { if(r<3) board[r][c]=P2; else if(r>4) board[r][c]=P1; }
+                renderBoard(); updateStatus(); findAllPlayerMoves(currentPlayer); updateScore(); modalEl.classList.add('hidden'); startTurnTimer(); updatePlayerHighlight();
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+            }
+            function renderBoard() {
+                boardEl.innerHTML='';
+                for(let r=0; r<BOARD_SIZE; r++) for(let c=0; c<BOARD_SIZE; c++) {
+                    const cell=document.createElement('div'), isDark=(r+c)%2===1;
+                    cell.className=`w-full h-full flex items-center justify-center relative ${isDark?'bg-gray-700 cursor-pointer':'bg-gray-400'}`;
+                    const pieceType=board[r][c];
+                    if(pieceType!==EMPTY) {
+                        const piece=document.createElement('div');
+                        piece.className=`w-[70%] h-[70%] rounded-full shadow-lg transition-all duration-150 ${(pieceType===P1||pieceType===P1_KING)?'bg-gray-900 border-2 border-gray-600':'bg-gray-200 border-2 border-gray-400'}`;
+                        if(!gameOver && isPlayerPiece(pieceType, currentPlayer)) piece.classList.add('current-player-ring');
+                        if(pieceType===P1_KING||pieceType===P2_KING) { piece.classList.add('king'); piece.classList.add(pieceType===P1_KING?'text-gray-200':'text-gray-900'); }
+                        cell.appendChild(piece);
+                    }
+                    if(selectedPiece && selectedPiece.row===r && selectedPiece.col===c) cell.classList.add('bg-yellow-500','opacity-80');
+                    if(validMoves.some(m=>m.toRow===r && m.toCol===c)) { const h=document.createElement('div'); h.className='absolute w-1/3 h-1/3 bg-green-500 rounded-full opacity-50'; cell.appendChild(h); }
+                    if(isDark) cell.onclick=()=>onCellClick(r, c);
+                    boardEl.appendChild(cell);
+                }
+            }
+            function onCellClick(row, col) {
+                if(gameOver) return;
+                if(gameMode==='IA' && currentPlayer===P2) return;
+                const move=validMoves.find(m=>m.toRow===row && m.toCol===col);
+                if(move) { executeMove(move); return; }
+                if(isChainCapture) return;
+                selectedPiece=null; validMoves=[];
+                const pieceType=board[row][col];
+                if(isPlayerPiece(pieceType, currentPlayer)) {
+                    if(mustCaptureMoves.length>0 && !mustCaptureMoves.some(m=>m.fromRow===row && m.fromCol===col)) return;
+                    selectedPiece={row, col, type:pieceType};
+                    validMoves=(mustCaptureMoves.length>0)?mustCaptureMoves.filter(m=>m.fromRow===row && m.fromCol===col):findAllMovesForPiece(row, col, pieceType, false);
+                }
+                renderBoard();
+            }
+            function executeMove(move) {
+                const {fromRow, fromCol, toRow, toCol, captured}=move, pieceType=board[fromRow][fromCol];
+                board[toRow][toCol]=pieceType; board[fromRow][fromCol]=EMPTY;
+                if(captured) { board[captured.row][captured.col]=EMPTY; playSoundCapture(); } else playSoundMove();
+                if(pieceType===P1 && toRow===0) board[toRow][toCol]=P1_KING;
+                if(pieceType===P2 && toRow===BOARD_SIZE-1) board[toRow][toCol]=P2_KING;
+                isChainCapture=false;
+                if(captured) {
+                    const newCaptures=findAllMovesForPiece(toRow, toCol, board[toRow][toCol], true);
+                    if(newCaptures.length>0) { isChainCapture=true; selectedPiece={row:toRow, col:toCol, type:board[toRow][toCol]}; validMoves=newCaptures; mustCaptureMoves=newCaptures; startTurnTimer(); renderBoard(); }
+                }
+                if(!isChainCapture) { selectedPiece=null; validMoves=[]; switchTurn(); } else if(gameMode==='IA' && currentPlayer===P2) setTimeout(makeAIMove, 500);
+                updateScore();
+            }
+            function switchTurn() {
+                if(gameOver) return;
+                currentPlayer=(currentPlayer===P1)?P2:P1; updateStatus(); startTurnTimer(); updatePlayerHighlight(); renderBoard(); findAllPlayerMoves(currentPlayer);
+                if(mustCaptureMoves.length===0 && findAllSimpleMoves(currentPlayer).length===0) { showGameOver((currentPlayer===P1)?"Brancas (P2) Venceram!":"Pretas (P1) Venceram!"); return; }
+                if(gameMode==='IA' && currentPlayer===P2 && !gameOver) setTimeout(makeAIMove, 500);
+            }
+            function showGameOver(msg) { gameOver=true; stopTurnTimer(); updatePlayerHighlight(); renderBoard(); winnerMsgEl.textContent=msg; modalEl.classList.remove('hidden'); }
+            function makeAIMove() {
+                if(gameOver) return; statusEl.textContent="IA está pensando...";
+                setTimeout(()=>{
+                    const {bestMove}=minimax(board, 3, true, P2);
+                    if(bestMove) executeMove(bestMove); else showGameOver("Pretas (P1) Venceram! (IA travada)");
+                }, 0);
+            }
+            function minimax(simBoard, depth, isMax, player) {
+                if(depth===0) return {score:evaluateBoard(simBoard), bestMove:null};
+                const allMoves=getAllPossibleMovesForPlayer(simBoard, player);
+                if(allMoves.length===0) return {score:isMax?-Infinity:Infinity, bestMove:null};
+                let bestMove=null, bestScore=isMax?-Infinity:Infinity;
+                for(const move of allMoves) {
+                    const {newBoard, isChain}=simulateMove(simBoard, move);
+                    let score;
+                    if(isChain) score=minimax(newBoard, depth-1, isMax, player).score;
+                    else score=minimax(newBoard, depth-1, !isMax, (player===P1)?P2:P1).score;
+                    if(isMax) { if(score>bestScore) { bestScore=score; bestMove=move; } } else { if(score<bestScore) { bestScore=score; bestMove=move; } }
+                }
+                return {score:bestScore, bestMove};
+            }
+            function evaluateBoard(b) {
+                let s=0; for(let r=0; r<8; r++) for(let c=0; c<8; c++) { const p=b[r][c]; if(p===P1) s-=1; if(p===P2) s+=1; if(p===P1_KING) s-=3; if(p===P2_KING) s+=3; } return s;
+            }
+            function getAllPossibleMovesForPlayer(simBoard, player) {
+                let moves=[], captures=[];
+                const realBoard=board; board=simBoard; 
+                for(let r=0; r<8; r++) for(let c=0; c<8; c++) {
+                    const p=simBoard[r][c];
+                    if(!isPlayerPiece(p, player)) continue;
+                    moves.push(...findAllMovesForPiece(r, c, p, false)); captures.push(...findAllMovesForPiece(r, c, p, true));
+                }
+                board=realBoard; return captures.length>0?captures:moves;
+            }
+            function simulateMove(simBoard, move) {
+                const newBoard=simBoard.map(r=>[...r]), {fromRow, fromCol, toRow, toCol, captured}=move;
+                let p=newBoard[fromRow][fromCol]; newBoard[toRow][toCol]=p; newBoard[fromRow][fromCol]=EMPTY;
+                if(captured) newBoard[captured.row][captured.col]=EMPTY;
+                if(p===P1 && toRow===0) newBoard[toRow][toCol]=P1_KING; if(p===P2 && toRow===7) newBoard[toRow][toCol]=P2_KING;
+                let isChain=false;
+                if(captured) { const realBoard=board; board=newBoard; if(findAllMovesForPiece(toRow, toCol, newBoard[toRow][toCol], true).length>0) isChain=true; board=realBoard; }
+                return {newBoard, isChain};
+            }
+            function findAllPlayerMoves(player) {
+                mustCaptureMoves=[]; for(let r=0; r<8; r++) for(let c=0; c<8; c++) if(isPlayerPiece(board[r][c], player)) mustCaptureMoves.push(...findAllMovesForPiece(r, c, board[r][c], true));
+            }
+            function findAllSimpleMoves(player) {
+                let m=[]; for(let r=0; r<8; r++) for(let c=0; r<8; r++) if(isPlayerPiece(board[r][c], player)) m.push(...findAllMovesForPiece(r, c, board[r][c], false)); return m;
+            }
+            function findAllMovesForPiece(r, c, type, capturesOnly) {
+                let moves=[], opp=(currentPlayer===P1)?[P2, P2_KING]:[P1, P1_KING], dirs=(type===P1_KING||type===P2_KING)?[[-1,-1],[-1,1],[1,-1],[1,1]]:(type===P1?[[-1,-1],[-1,1]]:[[1,-1],[1,1]]);
+                if(!capturesOnly) {
+                    if(type===P1_KING||type===P2_KING) { for(const [dr, dc] of dirs) { let cr=r+dr, cc=c+dc; while(isValidPos(cr, cc) && board[cr][cc]===EMPTY) { moves.push({fromRow:r, fromCol:c, toRow:cr, toCol:cc}); cr+=dr; cc+=dc; } } }
+                    else { for(const [dr, dc] of dirs) if(isValidPos(r+dr, c+dc) && board[r+dr][c+dc]===EMPTY) moves.push({fromRow:r, fromCol:c, toRow:r+dr, toCol:c+dc}); }
+                }
+                const capDirs=[[-1,-1],[-1,1],[1,-1],[1,1]];
+                if(type===P1_KING||type===P2_KING) {
+                    for(const [dr, dc] of capDirs) { let cr=r+dr, cc=c+dc; while(isValidPos(cr, cc)) { if(isPlayerPiece(board[cr][cc], currentPlayer)) break; if(opp.includes(board[cr][cc])) { let jr=cr+dr, jc=cc+dc; if(isValidPos(jr, jc) && board[jr][jc]===EMPTY) { while(isValidPos(jr, jc) && board[jr][jc]===EMPTY) { moves.push({fromRow:r, fromCol:c, toRow:jr, toCol:jc, captured:{row:cr, col:cc}}); jr+=dr; jc+=dc; } } break; } cr+=dr; cc+=dc; } }
+                } else {
+                    for(const [dr, dc] of capDirs) { const nr=r+dr, nc=c+dc, jr=r+dr*2, jc=c+dc*2; if(isValidPos(jr, jc) && opp.includes(board[nr][nc]) && board[jr][jc]===EMPTY) moves.push({fromRow:r, fromCol:c, toRow:jr, toCol:jc, captured:{row:nr, col:nc}}); }
+                }
+                return moves;
+            }
+            function isValidPos(r, c) { return r>=0 && r<8 && c>=0 && c<8; }
+            function isPlayerPiece(p, pl) { return (pl===P1 && (p===P1||p===P1_KING)) || (pl===P2 && (p===P2||p===P2_KING)); }
+            function updateStatus() { statusEl.textContent=gameOver?"Fim de Jogo":`Vez de: ${(currentPlayer===P1)?"Pretas (P1)":"Brancas (P2)"}`; }
+            function updateScore() { let s1=0, s2=0; for(let r=0; r<8; r++) for(let c=0; c<8; c++) { if(board[r][c]===P1||board[r][c]===P1_KING) s1++; if(board[r][c]===P2||board[r][c]===P2_KING) s2++; } p1ScoreEl.innerText=s1; p2ScoreEl.innerText=s2; }
+            function updatePlayerHighlight() { p1Box.className=`bg-gray-700 p-4 rounded-lg shadow-inner border-4 transition-colors duration-300 ${currentPlayer===P1 && !gameOver ? 'border-yellow-400 animate-pulse' : 'border-transparent'}`; p2Box.className=`bg-gray-700 p-4 rounded-lg shadow-inner border-4 transition-colors duration-300 ${currentPlayer===P2 && !gameOver ? 'border-yellow-400 animate-pulse' : 'border-transparent'}`; }
+            function startTurnTimer() { stopTurnTimer(); turnTimeLeft=45; updateTimerDisplay(); turnTimerID=setInterval(()=>{ if(gameOver) { stopTurnTimer(); return; } turnTimeLeft--; updateTimerDisplay(); if(turnTimeLeft===0) showGameOver((currentPlayer===P1?"Brancas":"Pretas") + " Venceram por tempo!"); }, 1000); }
+            function stopTurnTimer() { if(turnTimerID) clearInterval(turnTimerID); turnTimerID=null; }
+            function updateTimerDisplay() { timerEl.innerText=`00:${turnTimeLeft.toString().padStart(2,'0')}`; timerEl.className=`text-2xl font-mono font-bold w-24 text-center ${turnTimeLeft<=5?'text-red-500 animate-pulse':(turnTimeLeft<=10?'text-yellow-400':'text-gray-300')}`; }
+            function playSoundMove() { const o=audioCtx.createOscillator(), g=audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.frequency.setValueAtTime(800, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.1); o.start(); o.stop(audioCtx.currentTime+0.1); }
+            function playSoundCapture() { const o=audioCtx.createOscillator(), g=audioCtx.createGain(); o.connect(g); g.connect(audioCtx.destination); o.frequency.setValueAtTime(400, audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime+0.15); o.start(); o.stop(audioCtx.currentTime+0.15); }
+            container.querySelector('#damas-new-game-2p').onclick=()=>initGame('2P'); container.querySelector('#damas-new-game-ia').onclick=()=>initGame('IA'); container.querySelector('#damas-play-again-button').onclick=()=>initGame(gameMode);
+            initGame('2P');
+            return ()=>{ stopTurnTimer(); };
+        }
+
+        // 2. FORCA
+        function initForca(container) {
+            container.innerHTML = `
+                <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-2xl text-gray-800">
+                    <div class="flex flex-col md:flex-row gap-6">
+                        <div class="flex-1 text-center">
+                            <svg class="w-32 h-32 mx-auto mb-2" viewBox="0 0 100 120">
+                                <line x1="10" y1="115" x2="90" y2="115" stroke="#6B7280" stroke-width="4" />
+                                <line x1="30" y1="115" x2="30" y2="10" stroke="#6B7280" stroke-width="4" />
+                                <line x1="30" y1="10" x2="70" y2="10" stroke="#6B7280" stroke-width="4" />
+                                <line x1="70" y1="10" x2="70" y2="25" stroke="#6B7280" stroke-width="4" />
+                                <circle id="hp1" class="hangman-part" cx="70" cy="35" r="10" />
+                                <line id="hp2" class="hangman-part" x1="70" y1="45" x2="70" y2="75" />
+                                <line id="hp3" class="hangman-part" x1="70" y1="55" x2="55" y2="45" />
+                                <line id="hp4" class="hangman-part" x1="70" y1="55" x2="85" y2="45" />
+                                <line id="hp5" class="hangman-part" x1="70" y1="75" x2="55" y2="95" />
+                                <line id="hp6" class="hangman-part" x1="70" y1="75" x2="85" y2="95" />
+                            </svg>
+                            <div class="text-red-500 font-bold mb-2" id="forca-mistakes">Erros: 0/6</div>
+                            <div class="text-blue-600 font-bold mb-4" id="forca-timer">Tempo: 2:00</div>
+                            <div id="forca-word" class="flex flex-wrap justify-center gap-2 mb-4 text-3xl font-bold min-h-[3rem]"></div>
+                        </div>
+                        <div class="flex-1">
+                            <div id="forca-hint" class="text-center font-bold text-green-600 h-8 mb-2"></div>
+                            <div id="forca-keyboard" class="flex flex-wrap justify-center gap-1"></div>
+                            <button id="forca-restart" class="w-full mt-4 bg-blue-500 text-white font-bold py-2 rounded">Nova Palavra</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            const categories = {'BÍBLIA':['JESUS','MILAGRE','SALVACAO','BIBLIA','GRACA','PROFETAS'],'FRUTAS':['BANANA','UVA','MORANGO','ABACAXI'],'PAISES':['BRASIL','JAPAO','ARGENTINA','EGITO']};
+            let selectedWord='', currentCat='', guessed=[], wrong=[], gameActive=true, timer=null, timeLeft=120;
+            function startGame() {
+                const cats=Object.keys(categories); currentCat=cats[Math.floor(Math.random()*cats.length)];
+                const words=categories[currentCat]; selectedWord=words[Math.floor(Math.random()*words.length)];
+                guessed=Array(selectedWord.length).fill(null); wrong=[]; gameActive=true; timeLeft=120;
+                updateDisplay(); createKeyboard(); startTimer(); container.querySelector('#forca-hint').innerText='';
+                for(let i=1; i<=6; i++) { const el=container.querySelector(`#hp${i}`); el.style.visibility='hidden'; el.style.opacity=0; }
+            }
+            function createKeyboard() {
+                const kb=container.querySelector('#forca-keyboard'); kb.innerHTML='';
+                'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').forEach(l=>{
+                    const btn=document.createElement('button'); btn.innerText=l; btn.className="w-8 h-8 bg-blue-100 hover:bg-blue-200 text-blue-900 rounded font-bold transition";
+                    btn.onclick=()=>handleGuess(l, btn); kb.appendChild(btn);
+                });
+            }
+            function handleGuess(l, btn) {
+                if(!gameActive||btn.disabled) return;
+                btn.disabled=true; btn.classList.add('bg-gray-300','cursor-not-allowed'); btn.classList.remove('bg-blue-100');
+                if(selectedWord.includes(l)) {
+                    const synth=new Tone.Synth().toDestination(); synth.triggerAttackRelease("C5","8n");
+                    selectedWord.split('').forEach((char, i)=>{ if(char===l) guessed[i]=l; });
+                } else {
+                    const synth=new Tone.Synth().toDestination(); synth.triggerAttackRelease("A2","8n");
+                    wrong.push(l); const part=container.querySelector(`#hp${wrong.length}`); if(part) { part.style.visibility='visible'; part.style.opacity=1; }
+                }
+                if(wrong.length===3) container.querySelector('#forca-hint').innerText="Dica: "+currentCat;
+                updateDisplay(); checkWin();
+            }
+            function updateDisplay() {
+                container.querySelector('#forca-word').innerHTML=guessed.map(l=>`<span class="letter-display ${l?'revealed':''}">${l||'_'}</span>`).join('');
+                container.querySelector('#forca-mistakes').innerText=`Erros: ${wrong.length}/6`;
+            }
+            function checkWin() { if(!guessed.includes(null)) finish(true); else if(wrong.length>=6) finish(false); }
+            function finish(win) {
+                gameActive=false; clearInterval(timer);
+                container.querySelector('#forca-hint').innerText=win?"VOCÊ VENCEU!":"GAME OVER: "+selectedWord;
+                container.querySelector('#forca-hint').className=win?"text-center font-bold text-green-500 text-xl":"text-center font-bold text-red-500 text-xl";
+            }
+            function startTimer() {
+                if(timer) clearInterval(timer); const el=container.querySelector('#forca-timer');
+                timer=setInterval(()=>{
+                    if(!gameActive) return; timeLeft--;
+                    const m=Math.floor(timeLeft/60), s=timeLeft%60;
+                    el.innerText=`Tempo: ${m}:${s.toString().padStart(2,'0')}`;
+                    if(timeLeft<=0) finish(false);
+                }, 1000);
+            }
+            container.querySelector('#forca-restart').onclick=startGame; startGame();
+            return ()=>{ if(timer) clearInterval(timer); };
+        }
+
+        // 3. MEMÓRIA
+        function initMemoria(container) {
+            container.innerHTML = `
+                <div class="bg-white p-8 rounded-xl shadow-2xl text-center w-full max-w-lg text-gray-800">
+                    <h2 class="text-3xl font-bold text-blue-600 mb-4">Memória Musical</h2>
+                    <h3 class="text-xl font-semibold text-gray-700 mb-4">Jogadas: <span id="mem-moves">0</span></h3>
+                    <div id="mem-grid" class="grid grid-cols-4 gap-3 mb-6 justify-center"></div>
+                    <button id="mem-restart" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 rounded-lg">Reiniciar</button>
+                </div>
+            `;
+            const emojis=['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼'], sounds={'🐶':'C4','🐱':'D4','🐭':'E4','🐹':'F4','🐰':'G4','🦊':'A4','🐻':'B4','🐼':'C5'};
+            let cards=[], flipped=[], matched=0, moves=0, lock=false; let synth=new Tone.Synth().toDestination();
+            function init() {
+                const grid=container.querySelector('#mem-grid'); grid.innerHTML='';
+                cards=[...emojis, ...emojis].sort(()=>Math.random()-0.5); flipped=[]; matched=0; moves=0; lock=false;
+                container.querySelector('#mem-moves').innerText='0';
+                cards.forEach((emoji, idx)=>{
+                    const card=document.createElement('div'); card.className="memory-card-container w-full aspect-square";
+                    card.innerHTML=`<div class="memory-card-inner w-full h-full border-2 border-blue-100 rounded-lg"><div class="memory-back w-full h-full flex items-center justify-center text-white font-bold">?</div><div class="memory-front w-full h-full flex items-center justify-center bg-gray-50">${emoji}</div></div>`;
+                    card.onclick=()=>flip(card, emoji); grid.appendChild(card);
+                });
+            }
+            function flip(card, emoji) {
+                if(lock||card.classList.contains('is-flipped')||flipped.includes(card)) return;
+                try{ synth.triggerAttackRelease(sounds[emoji], "8n"); }catch(e){}
+                card.classList.add('is-flipped'); flipped.push(card);
+                if(flipped.length===2) { moves++; container.querySelector('#mem-moves').innerText=moves; lock=true; checkMatch(); }
+            }
+            function checkMatch() {
+                const [c1, c2]=flipped, e1=c1.querySelector('.memory-front').innerText, e2=c2.querySelector('.memory-front').innerText;
+                if(e1===e2) {
+                    matched++; flipped=[]; lock=false;
+                    if(matched===8) { const s=new Tone.PolySynth().toDestination(); s.triggerAttackRelease(["C4","E4","G4","C5"],"4n"); }
+                } else { setTimeout(()=>{ c1.classList.remove('is-flipped'); c2.classList.remove('is-flipped'); flipped=[]; lock=false; }, 1000); }
+            }
+            container.querySelector('#mem-restart').onclick=init; init(); return ()=>{};
+        }
+
+        // 4. VELHA
+        function initVelha(container) {
+            container.innerHTML = `
+                <div class="w-full max-w-md bg-gray-800 rounded-lg shadow-2xl border border-gray-700 p-8 text-white">
+                    <h1 class="text-3xl font-bold text-center text-blue-400 mb-6">Jogo da Velha</h1>
+                    <div class="text-center mb-4"><h2 class="text-lg font-semibold text-gray-300">Melhor de 3</h2><div class="text-4xl font-bold text-white flex justify-center items-center space-x-4"><span id="score-x" class="text-red-400">0</span><span>x</span><span id="score-o" class="text-green-400">0</span></div></div>
+                    <div class="flex justify-between mb-4 space-x-4"><div class="text-center w-1/2"><label for="player-x" class="block text-sm text-gray-400">Jogador X</label><input type="text" id="player-x" value="Janio" class="bg-gray-700 border border-gray-600 rounded p-2 text-center text-red-400 font-semibold w-full"></div><div class="text-center w-1/2"><label for="player-o" class="block text-sm text-gray-400">Jogador O</label><input type="text" id="player-o" value="Iis" class="bg-gray-700 border border-gray-600 rounded p-2 text-center text-green-400 font-semibold w-full"></div></div>
+                    <div id="velha-status-message" class="text-center text-xl font-semibold text-yellow-400 h-12 mb-4"></div>
+                    <div id="velha-board" class="grid grid-cols-3 gap-3 mb-6"></div>
+                    <button id="velha-restart-button" class="w-full bg-blue-600 text-white p-4 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors">Reiniciar Jogo</button>
+                </div>
+            `;
+            const board=container.querySelector('#velha-board'), status=container.querySelector('#velha-status-message'), restart=container.querySelector('#velha-restart-button'), scoreXEl=container.querySelector('#score-x'), scoreOEl=container.querySelector('#score-o'), pX=container.querySelector('#player-x'), pO=container.querySelector('#player-o');
+            let synthX, synthO; try{ synthX=new Tone.Synth().toDestination(); synthO=new Tone.Synth().toDestination(); }catch(e){}
+            let currentPlayer='x', gameActive=true, gameState=Array(9).fill(""), scoreX=0, scoreO=0;
+            const winning=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+            function init() {
+                board.innerHTML=''; gameState.fill(""); gameActive=true;
+                if(scoreX===2||scoreO===2) { scoreX=0; scoreO=0; updateScore(); status.textContent="Nova série iniciada!"; } else status.textContent=`Vez de ${getName(currentPlayer)}`;
+                currentPlayer='x';
+                for(let i=0; i<9; i++) {
+                    const cell=document.createElement('div'); cell.className='tic-cell w-full aspect-square bg-gray-700 rounded-lg flex items-center justify-center text-5xl font-bold cursor-pointer transition-all duration-300';
+                    cell.onclick=()=>click(i, cell); board.appendChild(cell);
+                }
+            }
+            function click(i, cell) {
+                if(gameState[i]!==""||!gameActive) return;
+                gameState[i]=currentPlayer; cell.textContent=currentPlayer==='x'?'X':'O';
+                cell.className=`tic-cell w-full aspect-square bg-gray-700 rounded-lg flex items-center justify-center text-5xl font-bold cursor-pointer transition-all duration-300 ${currentPlayer==='x'?'text-red-400':'text-green-400'}`;
+                playSound(currentPlayer);
+                if(checkWin()) {
+                    gameActive=false; (currentPlayer==='x')?scoreX++:scoreO++; updateScore();
+                    if(scoreX===2) status.textContent=`${getName('x')} venceu a série!`; else if(scoreO===2) status.textContent=`${getName('o')} venceu a série!`; else status.textContent=`${getName(currentPlayer)} venceu a rodada!`;
+                } else if(!gameState.includes("")) { gameActive=false; status.textContent="Empate!"; }
+                else { currentPlayer=currentPlayer==='x'?'o':'x'; status.textContent=`Vez de ${getName(currentPlayer)}`; }
+            }
+            function checkWin() { return winning.some(c=>gameState[c[0]]&&gameState[c[0]]===gameState[c[1]]&&gameState[c[0]]===gameState[c[2]]); }
+            function playSound(p) { try{ if(Tone.context.state!=='running') Tone.start(); if(p==='x') synthX.triggerAttackRelease("C4","8n"); else synthO.triggerAttackRelease("G4","8n"); }catch(e){} }
+            function updateScore() { scoreXEl.textContent=scoreX; scoreOEl.textContent=scoreO; }
+            function getName(p) { return (p==='x'?pX.value:pO.value).trim() || (p==='x'?'Jogador X':'Jogador O'); }
+            restart.onclick=init; init(); return ()=>{};
+        }
+
+        // 5. QUIZ
+        function initQuiz(container) {
+            container.innerHTML=`
+                <div class="quiz-scope"><div class="quiz-app-container" id="quiz-main-container">
+                    <div id="screen-menu" class="quiz-screen active">
+                        <h1 class="text-2xl font-bold mb-4">🎩 MAGIC QUIZ ULTIMATE</h1>
+                        <p class="text-gray-300 mb-6">Teste seus conhecimentos com ajuda mágica!</p>
+                        <div class="mode-selector flex gap-2 mb-6"><button class="mode-btn selected bg-accent text-white" id="btn-solo" onclick="quizAPI.setMode('solo')">👤 Solo</button><button class="mode-btn" id="btn-duo" onclick="quizAPI.setMode('duo')">👥 Duelo</button></div>
+                        <div class="category-grid grid grid-cols-2 gap-4">
+                            <div class="cat-card bg-highlight p-4 rounded-xl cursor-pointer" onclick="quizAPI.startGame('biblia')"><span class="cat-icon text-3xl">📜</span><span class="cat-title block">Bíblia</span></div>
+                            <div class="cat-card bg-highlight p-4 rounded-xl cursor-pointer" onclick="quizAPI.startGame('mundo')"><span class="cat-icon text-3xl">🌍</span><span class="cat-title block">Mundo</span></div>
+                        </div>
+                    </div>
+                    <div id="screen-game" class="quiz-screen">
+                        <button class="btn-back-quiz mb-4" onclick="quizAPI.returnToMenu()">⬅ Menu</button>
+                        <div class="hud flex justify-between w-full mb-4"><div id="hud-p1" class="player-score-box p1-style active"><span class="score-val" id="score-p1">0</span></div><div id="hud-p2" class="player-score-box p2-style" style="display:none;"><span class="score-val" id="score-p2">0</span></div></div>
+                        <div class="timer-wrapper w-full bg-gray-800 h-2 rounded mb-4"><div class="timer-fill bg-green-500 h-full rounded" id="timer-bar"></div></div>
+                        <div class="question-box bg-gray-700 p-6 rounded-xl mb-6 text-xl text-center" id="question-text">Preparando pergunta...</div>
+                        <div class="options-list grid grid-cols-2 gap-4 w-full" id="options-container"></div>
+                    </div>
+                    <div id="screen-end" class="quiz-screen">
+                        <h1 class="text-3xl font-bold mb-4">FIM DE JOGO!</h1><div class="winner-text text-xl mb-6" id="winner-display"></div>
+                        <button class="btn-restart bg-accent text-white px-8 py-3 rounded-full" onclick="quizAPI.returnToMenu()">🔄 Rejogar</button>
+                    </div>
+                </div></div>`;
+            const database={
+                biblia:[{q:"Quem construiu a Arca?",opt:["Moisés","Noé","Abraão","Davi"],a:1},{q:"Quem derrotou Golias?",opt:["Sansão","Davi","Saul","Gideão"],a:1}],
+                mundo:[{q:"Capital da França?",opt:["Londres","Berlim","Paris","Madri"],a:2},{q:"Maior país do mundo?",opt:["China","Brasil","Rússia","EUA"],a:2}]
+            };
+            let state={mode:'solo',questions:[],currentIdx:0,p1:{score:0},p2:{score:0},turn:1,timer:null,timeLeft:30};
+            const quizAPI={
+                setMode:(m)=>{state.mode=m; container.querySelector('#btn-solo').classList.toggle('selected',m==='solo'); container.querySelector('#btn-duo').classList.toggle('selected',m==='duo');},
+                startGame:(cat)=>{
+                    state.p1={score:0}; state.p2={score:0}; state.currentIdx=0; state.turn=1;
+                    state.questions=(database[cat]||[]).sort(()=>Math.random()-0.5).slice(0, 10);
+                    container.querySelector('#hud-p2').style.display=state.mode==='duo'?'block':'none';
+                    quizAPI.switchScreen('screen-game'); quizAPI.nextQuestion();
+                },
+                switchScreen:(id)=>{container.querySelectorAll('.quiz-screen').forEach(s=>s.classList.remove('active'));container.querySelector('#'+id).classList.add('active');},
+                returnToMenu:()=>{clearInterval(state.timer); quizAPI.switchScreen('screen-menu');},
+                nextQuestion:()=>{
+                    if(state.currentIdx>=state.questions.length){quizAPI.endGame();return;}
+                    state.timeLeft=30; quizAPI.startTimer();
+                    const q=state.questions[state.currentIdx]; container.querySelector('#question-text').innerText=q.q;
+                    const div=container.querySelector('#options-container'); div.innerHTML='';
+                    q.opt.forEach((txt,i)=>{
+                        const btn=document.createElement('button'); btn.className='option-btn bg-gray-600 p-4 rounded-lg text-white hover:bg-gray-500'; btn.innerText=txt;
+                        btn.onclick=()=>quizAPI.answer(i,btn); div.appendChild(btn);
+                    });
+                },
+                startTimer:()=>{
+                    clearInterval(state.timer); const bar=container.querySelector('#timer-bar');
+                    state.timer=setInterval(()=>{
+                        state.timeLeft--; const pct=(state.timeLeft/30)*100; bar.style.width=pct+'%';
+                        if(state.timeLeft<=0) quizAPI.advanceTurn();
+                    },1000);
+                },
+                answer:(idx,btn)=>{
+                    clearInterval(state.timer); const q=state.questions[state.currentIdx], isCorrect=(idx===q.a), p=state.turn===1?state.p1:state.p2;
+                    if(isCorrect){ btn.classList.add('bg-green-500'); p.score+=100; } else { btn.classList.add('bg-red-500'); }
+                    container.querySelector('#score-p1').innerText=state.p1.score; container.querySelector('#score-p2').innerText=state.p2.score;
+                    setTimeout(()=>quizAPI.advanceTurn(),1500);
+                },
+                advanceTurn:()=>{ if(state.mode==='duo') state.turn=state.turn===1?2:1; state.currentIdx++; quizAPI.nextQuestion(); },
+                endGame:()=>{
+                    quizAPI.switchScreen('screen-end');
+                    const wd=container.querySelector('#winner-display');
+                    wd.innerText=state.mode==='duo'?(state.p1.score>state.p2.score?"Venceu P1":"Venceu P2"):"Pontos: "+state.p1.score;
+                }
+            };
+            window.quizAPI=quizAPI; return ()=>{clearInterval(state.timer); window.quizAPI=undefined;};
+        }
+
+        // 6. AERO STRIKER
         function initAeroStriker(container) {
             // Estilos específicos do Aero Striker (Scoped ID)
             const css = `
