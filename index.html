@@ -414,7 +414,7 @@
                 mustCaptureMoves=[]; for(let r=0; r<8; r++) for(let c=0; c<8; c++) if(isPlayerPiece(board[r][c], player)) mustCaptureMoves.push(...findAllMovesForPiece(r, c, board[r][c], true));
             }
             function findAllSimpleMoves(player) {
-                let m=[]; for(let r=0; r<8; r++) for(let c=0; r<8; r++) if(isPlayerPiece(board[r][c], player)) m.push(...findAllMovesForPiece(r, c, board[r][c], false)); return m;
+                let m=[]; for(let r=0; r<8; r++) for(let c=0; c<8; c++) if(isPlayerPiece(board[r][c], player)) m.push(...findAllMovesForPiece(r, c, board[r][c], false)); return m;
             }
             function findAllMovesForPiece(r, c, type, capturesOnly) {
                 let moves=[], opp=(currentPlayer===P1)?[P2, P2_KING]:[P1, P1_KING], dirs=(type===P1_KING||type===P2_KING)?[[-1,-1],[-1,1],[1,-1],[1,1]]:(type===P1?[[-1,-1],[-1,1]]:[[1,-1],[1,1]]);
@@ -445,7 +445,9 @@
             return ()=>{ stopTurnTimer(); };
         }
 
-        // 2. FORCA
+        // =================================================================
+        // JOGO 2: FORCA
+        // =================================================================
         function initForca(container) {
             container.innerHTML = `
                 <div class="bg-white p-6 rounded-xl shadow-2xl w-full max-w-2xl text-gray-800">
@@ -475,7 +477,7 @@
                     </div>
                 </div>
             `;
-            const categories = {'BÍBLIA':['JESUS','MILAGRE','SALVACAO','BIBLIA','GRACA','PROFETAS'],'FRUTAS':['BANANA','UVA','MORANGO','ABACAXI'],'PAISES':['BRASIL','JAPAO','ARGENTINA','EGITO']};
+            const categories = {'FRUTAS':['BANANA','UVA'],'ANIMAIS':['GATO','CACHORRO'],'PAISES':['BRASIL','JAPAO']};
             let selectedWord='', currentCat='', guessed=[], wrong=[], gameActive=true, timer=null, timeLeft=120;
             function startGame() {
                 const cats=Object.keys(categories); currentCat=cats[Math.floor(Math.random()*cats.length)];
@@ -527,7 +529,9 @@
             return ()=>{ if(timer) clearInterval(timer); };
         }
 
-        // 3. MEMÓRIA
+        // =================================================================
+        // JOGO 3: MEMÓRIA
+        // =================================================================
         function initMemoria(container) {
             container.innerHTML = `
                 <div class="bg-white p-8 rounded-xl shadow-2xl text-center w-full max-w-lg text-gray-800">
@@ -543,9 +547,9 @@
                 const grid=container.querySelector('#mem-grid'); grid.innerHTML='';
                 cards=[...emojis, ...emojis].sort(()=>Math.random()-0.5); flipped=[]; matched=0; moves=0; lock=false;
                 container.querySelector('#mem-moves').innerText='0';
-                cards.forEach((emoji, idx)=>{
-                    const card=document.createElement('div'); card.className="memory-card-container w-full aspect-square";
-                    card.innerHTML=`<div class="memory-card-inner w-full h-full border-2 border-blue-100 rounded-lg"><div class="memory-back w-full h-full flex items-center justify-center text-white font-bold">?</div><div class="memory-front w-full h-full flex items-center justify-center bg-gray-50">${emoji}</div></div>`;
+                cards.forEach(emoji=>{
+                    const card=document.createElement('div'); card.className="memory-card-container w-20 h-20";
+                    card.innerHTML=`<div class="memory-card-inner"><div class="memory-back">?</div><div class="memory-front">${emoji}</div></div>`;
                     card.onclick=()=>flip(card, emoji); grid.appendChild(card);
                 });
             }
@@ -565,7 +569,9 @@
             container.querySelector('#mem-restart').onclick=init; init(); return ()=>{};
         }
 
-        // 4. VELHA
+        // =================================================================
+        // JOGO 4: VELHA
+        // =================================================================
         function initVelha(container) {
             container.innerHTML = `
                 <div class="w-full max-w-md bg-gray-800 rounded-lg shadow-2xl border border-gray-700 p-8 text-white">
@@ -586,14 +592,14 @@
                 if(scoreX===2||scoreO===2) { scoreX=0; scoreO=0; updateScore(); status.textContent="Nova série iniciada!"; } else status.textContent=`Vez de ${getName(currentPlayer)}`;
                 currentPlayer='x';
                 for(let i=0; i<9; i++) {
-                    const cell=document.createElement('div'); cell.className='tic-cell w-full aspect-square bg-gray-700 rounded-lg flex items-center justify-center text-5xl font-bold cursor-pointer transition-all duration-300';
+                    const cell=document.createElement('div'); cell.className='tic-cell w-24 h-24 bg-gray-700 rounded-lg flex items-center justify-center text-5xl font-bold cursor-pointer transition-all duration-300';
                     cell.onclick=()=>click(i, cell); board.appendChild(cell);
                 }
             }
             function click(i, cell) {
                 if(gameState[i]!==""||!gameActive) return;
                 gameState[i]=currentPlayer; cell.textContent=currentPlayer==='x'?'X':'O';
-                cell.className=`tic-cell w-full aspect-square bg-gray-700 rounded-lg flex items-center justify-center text-5xl font-bold cursor-pointer transition-all duration-300 ${currentPlayer==='x'?'text-red-400':'text-green-400'}`;
+                cell.className=`tic-cell w-24 h-24 bg-gray-700 rounded-lg flex items-center justify-center text-5xl font-bold cursor-pointer transition-all duration-300 ${currentPlayer==='x'?'text-red-400':'text-green-400'}`;
                 playSound(currentPlayer);
                 if(checkWin()) {
                     gameActive=false; (currentPlayer==='x')?scoreX++:scoreO++; updateScore();
@@ -608,80 +614,141 @@
             restart.onclick=init; init(); return ()=>{};
         }
 
-        // 5. QUIZ
+        // =================================================================
+        // JOGO 5: QUIZ (Super Pack - Perguntas Aleatórias)
+        // =================================================================
         function initQuiz(container) {
             container.innerHTML=`
                 <div class="quiz-scope"><div class="quiz-app-container" id="quiz-main-container">
                     <div id="screen-menu" class="quiz-screen active">
-                        <h1 class="text-2xl font-bold mb-4">🎩 MAGIC QUIZ ULTIMATE</h1>
-                        <p class="text-gray-300 mb-6">Teste seus conhecimentos com ajuda mágica!</p>
-                        <div class="mode-selector flex gap-2 mb-6"><button class="mode-btn selected bg-accent text-white" id="btn-solo" onclick="quizAPI.setMode('solo')">👤 Solo</button><button class="mode-btn" id="btn-duo" onclick="quizAPI.setMode('duo')">👥 Duelo</button></div>
-                        <div class="category-grid grid grid-cols-2 gap-4">
-                            <div class="cat-card bg-highlight p-4 rounded-xl cursor-pointer" onclick="quizAPI.startGame('biblia')"><span class="cat-icon text-3xl">📜</span><span class="cat-title block">Bíblia</span></div>
-                            <div class="cat-card bg-highlight p-4 rounded-xl cursor-pointer" onclick="quizAPI.startGame('mundo')"><span class="cat-icon text-3xl">🌍</span><span class="cat-title block">Mundo</span></div>
+                        <h1 style="margin:0 0 15px 0;text-shadow:3px 3px 6px rgba(0,0,0,0.5);">🎩 MAGIC QUIZ ULTIMATE</h1>
+                        <p style="color:#ccc;margin-bottom:20px;">Teste seus conhecimentos com ajuda mágica!</p>
+                        <div class="mode-selector"><button class="mode-btn selected" id="btn-solo" onclick="quizAPI.setMode('solo')">👤 Solo</button><button class="mode-btn" id="btn-duo" onclick="quizAPI.setMode('duo')">👥 Duelo (2 Jogadores)</button></div>
+                        <div class="category-grid">
+                            <div class="cat-card" onclick="quizAPI.startGame('biblia')"><span class="cat-icon">📜</span><span class="cat-title">Bíblia Sagrada</span></div>
+                            <div class="cat-card" onclick="quizAPI.startGame('frutas')"><span class="cat-icon">🍇</span><span class="cat-title">Frutas & Comida</span></div>
+                            <div class="cat-card" onclick="quizAPI.startGame('carros')"><span class="cat-icon">🏎️</span><span class="cat-title">Carros & Motores</span></div>
+                            <div class="cat-card" onclick="quizAPI.startGame('mundo')"><span class="cat-icon">🌍</span><span class="cat-title">Mundo & Geo</span></div>
+                            <div class="cat-card" onclick="quizAPI.startGame('matematica')"><span class="cat-icon">📐</span><span class="cat-title">Matemática</span></div>
+                            <div class="cat-card" onclick="quizAPI.startGame('geral')"><span class="cat-icon">🎲</span><span class="cat-title">Mistura Total</span></div>
                         </div>
                     </div>
                     <div id="screen-game" class="quiz-screen">
-                        <button class="btn-back-quiz mb-4" onclick="quizAPI.returnToMenu()">⬅ Menu</button>
-                        <div class="hud flex justify-between w-full mb-4"><div id="hud-p1" class="player-score-box p1-style active"><span class="score-val" id="score-p1">0</span></div><div id="hud-p2" class="player-score-box p2-style" style="display:none;"><span class="score-val" id="score-p2">0</span></div></div>
-                        <div class="timer-wrapper w-full bg-gray-800 h-2 rounded mb-4"><div class="timer-fill bg-green-500 h-full rounded" id="timer-bar"></div></div>
-                        <div class="question-box bg-gray-700 p-6 rounded-xl mb-6 text-xl text-center" id="question-text">Preparando pergunta...</div>
-                        <div class="options-list grid grid-cols-2 gap-4 w-full" id="options-container"></div>
+                        <button class="btn-back-quiz" onclick="quizAPI.returnToMenu()">⬅ Voltar ao Menu</button>
+                        <div class="hud"><div id="hud-p1" class="player-score-box p1-style active"><span style="font-size:0.8rem">JOGADOR 1</span><span class="score-val" id="score-p1">0</span><span class="combo-badge" id="combo-p1">COMBO x2!</span></div><div id="hud-p2" class="player-score-box p2-style" style="display:none;"><span style="font-size:0.8rem">JOGADOR 2</span><span class="score-val" id="score-p2">0</span><span class="combo-badge" id="combo-p2">COMBO x2!</span></div></div>
+                        <div class="timer-wrapper"><div class="timer-val" id="timer-text">30s</div><div class="timer-track"><div class="timer-fill" id="timer-bar"></div></div></div>
+                        <div class="question-box" id="question-text">Preparando pergunta mágica...</div>
+                        <div class="options-list" id="options-container"></div>
+                        <div class="powerups-bar"><button class="power-btn" id="btn-5050" onclick="quizAPI.usePowerUp('5050')" title="Elimina 2 erradas">✂️ 50/50</button><button class="power-btn" id="btn-skip" onclick="quizAPI.usePowerUp('skip')" title="Pula pergunta">⏭️ Pular</button></div>
                     </div>
                     <div id="screen-end" class="quiz-screen">
-                        <h1 class="text-3xl font-bold mb-4">FIM DE JOGO!</h1><div class="winner-text text-xl mb-6" id="winner-display"></div>
-                        <button class="btn-restart bg-accent text-white px-8 py-3 rounded-full" onclick="quizAPI.returnToMenu()">🔄 Rejogar</button>
+                        <h1 style="color:var(--gold);">FIM DE JOGO!</h1><div class="winner-text" id="winner-display"></div>
+                        <div class="score-board"><div class="result-row"><span style="color:var(--p1)">Jogador 1</span><span id="final-p1">0 pts</span></div><div class="result-row" id="final-row-p2"><span style="color:var(--p2)">Jogador 2</span><span id="final-p2">0 pts</span></div><div class="result-row"><span>Total de Perguntas</span><span id="final-total">15</span></div></div>
+                        <div style="display:flex;gap:15px;width:100%;justify-content:center;"><button class="btn-restart" onclick="quizAPI.returnToMenu()">🔄 Rejogar</button><button class="btn-restart secondary" onclick="quizAPI.returnToMenu()">⬅ Menu</button></div>
                     </div>
                 </div></div>`;
+            
+            // --- SUPER PACK DE PERGUNTAS (150+ Perguntas Únicas) ---
             const database={
-                biblia:[{q:"Quem construiu a Arca?",opt:["Moisés","Noé","Abraão","Davi"],a:1},{q:"Quem derrotou Golias?",opt:["Sansão","Davi","Saul","Gideão"],a:1}],
-                mundo:[{q:"Capital da França?",opt:["Londres","Berlim","Paris","Madri"],a:2},{q:"Maior país do mundo?",opt:["China","Brasil","Rússia","EUA"],a:2}]
+                biblia:[
+                    {q:"Quem construiu a Arca?",opt:["Moisés","Noé","Abraão","Davi"],a:1},{q:"Quem derrotou o gigante Golias?",opt:["Sansão","Salomão","Davi","Saul"],a:2},{q:"Qual o primeiro livro da Bíblia?",opt:["Mateus","Gênesis","Êxodo","Apocalipse"],a:1},{q:"Quem foi engolido por um grande peixe?",opt:["Jonas","Pedro","Paulo","Elias"],a:0},{q:"Onde Jesus nasceu?",opt:["Nazaré","Jerusalém","Belém","Roma"],a:2},{q:"Quem traiu Jesus?",opt:["Pedro","Judas Iscariotes","Tomé","Lucas"],a:1},{q:"Quantos mandamentos foram dados a Moisés?",opt:["7","10","12","5"],a:1},{q:"Quem abriu o Mar Vermelho?",opt:["Noé","Elias","Moisés","Josué"],a:2},{q:"Qual a mãe de Jesus?",opt:["Marta","Maria","Isabel","Rute"],a:1},{q:"Rei conhecido por sua sabedoria?",opt:["Davi","Saul","Salomão","Herodes"],a:2},{q:"Quantos discípulos tinha Jesus?",opt:["10","11","12","13"],a:2},{q:"Quem foi lançado na cova dos leões?",opt:["Daniel","José","Samuel","Isaías"],a:0},{q:"Esposa de Isaque?",opt:["Sara","Rebeca","Raquel","Lia"],a:1},{q:"Quem negou Jesus 3 vezes?",opt:["João","Judas","Pedro","Tiago"],a:2},{q:"Primeiro milagre de Jesus?",opt:["Andar sobre águas","Cura do cego","Água em Vinho","Ressurreição"],a:2},
+                    {q:"Quem foi o primeiro homem?",opt:["Abel","Caim","Adão","Noé"],a:2},{q:"Quem foi a esposa de Abraão?",opt:["Sara","Rebeca","Raquel","Lia"],a:0},{q:"Quem escreveu o Apocalipse?",opt:["Paulo","Pedro","João","Lucas"],a:2},{q:"Cidade destruída por fogo e enxofre?",opt:["Jericó","Sodoma","Nínive","Babilônia"],a:1},{q:"O que Davi usou para matar Golias?",opt:["Espada","Lança","Funda e Pedra","Arco e Flecha"],a:2},{q:"Quem foi vendido pelos irmãos como escravo?",opt:["José","Benjamim","Judá","Rúben"],a:0},{q:"Qual mar Jesus acalmou a tempestade?",opt:["Mar Morto","Mar Vermelho","Mar da Galileia","Mar Mediterrâneo"],a:2},{q:"Quem subiu aos céus numa carruagem de fogo?",opt:["Eliseu","Elias","Enoque","Isaías"],a:1},{q:"Quem era irmão de Moisés?",opt:["Arão","Josué","Calebe","Hur"],a:0},{q:"Quantos dias e noites choveu no dilúvio?",opt:["7","40","150","100"],a:1},
+                    {q:"Qual é o livro mais longo da Bíblia?",opt:["Gênesis","Salmos","Isaías","Apocalipse"],a:1},{q:"Quem lutou com um anjo?",opt:["Moisés","Jacó","Abraão","Pedro"],a:1},{q:"O que significa o nome Emanuel?",opt:["Deus é amor","Deus conosco","Deus salvou","Luz do mundo"],a:1},{q:"Quem foi o homem mais forte da Bíblia?",opt:["Davi","Golias","Sansão","Gideão"],a:2},{q:"Qual profeta foi alimentado por corvos?",opt:["Elias","Eliseu","Samuel","Jonas"],a:0},
+                    {q:"Onde Adão e Eva viveram?",opt:["Jardim do Éden","Canaã","Egito","Ur"],a:0},{q:"Quem batizou Jesus?",opt:["Pedro","João Batista","Tiago","Paulo"],a:1},{q:"Qual o menor livro da Bíblia?",opt:["2 João","3 João","Judas","Obadias"],a:0},{q:"Quem escreveu a maior parte do Novo Testamento?",opt:["Pedro","João","Paulo","Lucas"],a:2},{q:"Quantas pragas foram enviadas ao Egito?",opt:["7","10","12","5"],a:1},{q:"Quem era o rei da Babilônia?",opt:["Ciro","Dario","Nabucodonosor","Xerxes"],a:2},{q:"O que Sansão não podia cortar?",opt:["Unhas","Cabelo","Barba","Sobrancelhas"],a:1},{q:"Qual o nome da esposa de Moisés?",opt:["Zípora","Miriam","Raabe","Rute"],a:0},{q:"Quem viu a sarça ardente?",opt:["Abraão","Jacó","Moisés","Josué"],a:2},{q:"Onde Jesus transformou água em vinho?",opt:["Nazaré","Caná","Jericó","Betânia"],a:1}
+                ],
+                frutas:[
+                    {q:"Qual fruta é a 'proibida' nas lendas?",opt:["Pera","Maçã","Uva","Figo"],a:1},{q:"Fruta amarela e curva?",opt:["Banana","Melão","Pera","Abacaxi"],a:0},{q:"Fruta conhecida por ter vitamina C?",opt:["Maçã","Laranja","Uva","Pêssego"],a:1},{q:"O tomate é tecnicamente...",opt:["Legume","Fruta","Verdura","Raiz"],a:1},{q:"Fruta que tem coroa mas não é rei?",opt:["Abacaxi","Romã","Coco","Morango"],a:0},{q:"Qual fruta é usada para fazer vinho?",opt:["Cereja","Ameixa","Uva","Amora"],a:2},{q:"Açaí vem de qual tipo de planta?",opt:["Palmeira","Rasteira","Arbusto","Raiz"],a:0},{q:"Qual a cor do Limão Siciliano?",opt:["Verde","Laranja","Amarelo","Vermelho"],a:2},{q:"Fruta do Conde também é chamada de?",opt:["Pinha","Jaca","Graviola","Atemoia"],a:0},{q:"O Guaraná é originário de onde?",opt:["Cerrado","Amazônia","Pampas","Caatinga"],a:1},{q:"Qual fruta tem as sementes do lado de fora?",opt:["Melancia","Morango","Manga","Goiaba"],a:1},{q:"Ameixa seca é feita de qual fruta?",opt:["Uva","Tâmara","Ameixa","Damasco"],a:2},
+                    {q:"Fruta verde por fora e vermelha por dentro?",opt:["Melão","Melancia","Goiaba","Abacate"],a:1},{q:"Fruta envenenada da Branca de Neve?",opt:["Pera","Maçã","Banana","Laranja"],a:1},{q:"Fruta rica em potássio?",opt:["Banana","Limão","Maçã","Uva"],a:0},{q:"Fruta principal do guacamole?",opt:["Tomate","Abacate","Manga","Pêssego"],a:1},{q:"Fruta que é composta principalmente de água?",opt:["Banana","Melancia","Abacate","Coco"],a:1},{q:"Fruta que dá em cachos?",opt:["Uva","Melancia","Jaca","Melão"],a:0},{q:"Ameixa seca vem de qual fruta?",opt:["Ameixa","Uva","Tâmara","Figo"],a:0},{q:"O grão de café é tecnicamente uma...",opt:["Semente","Fruta","Raiz","Legume"],a:1},{q:"Fruta laranja por dentro e por fora?",opt:["Mamão","Melancia","Banana","Coco"],a:0},{q:"Fruta azeda usada na caipirinha?",opt:["Limão","Laranja","Maracujá","Abacaxi"],a:0},
+                    {q:"Fruta que tem 'olhos'?",opt:["Coco","Abacaxi","Kiwi","Morango"],a:0},{q:"Qual destas é uma fruta cítrica?",opt:["Banana","Tangerina","Maçã","Pera"],a:1},{q:"A uva passa é feita de...",opt:["Ameixa","Uva","Tâmara","Damasco"],a:1},{q:"Fruta conhecida como 'fruta do dragão'?",opt:["Lichia","Pitaia","Romã","Caqui"],a:1},{q:"Qual fruta é a base do chocolate?",opt:["Cacau","Café","Coco","Cupuaçu"],a:0},
+                    {q:"Fruta que 'chora' ao ser cortada?",opt:["Cebola","Limão","Jaca","Melão"],a:0},{q:"O que é o 'Coração de Bananeira'?",opt:["Fruta","Flor","Raiz","Semente"],a:1},{q:"Fruta símbolo da Nova Zelândia?",opt:["Kiwi","Maçã","Uva","Pêssego"],a:0},{q:"Qual fruta tem o nome de uma cor?",opt:["Laranja","Limão","Manga","Caju"],a:0},{q:"Azeitona é...",opt:["Legume","Verdura","Fruta","Raiz"],a:2},{q:"Fruta espinhosa por fora?",opt:["Jaca","Melancia","Manga","Banana"],a:0},{q:"Maior fruta do mundo (em árvore)?",opt:["Jaca","Melancia","Abóbora","Coco"],a:0},{q:"Fruta usada para fazer sidra?",opt:["Maçã","Uva","Pera","Pêssego"],a:0}
+                ],
+                carros:[
+                    {q:"Marca do carro com um cavalo no logo?",opt:["Jaguar","Ferrari","Lamborghini","Peugeot"],a:1},{q:"Quem fabricava o Fusca?",opt:["Ford","Fiat","Volkswagen","Chevrolet"],a:2},{q:"O que significa ABS?",opt:["Aceleração Básica","Sistema de Freio","Airbag System","Audio Bass"],a:1},{q:"Qual país é sede da Fiat?",opt:["França","Alemanha","Itália","Espanha"],a:2},{q:"Carro famoso do filme 'De Volta para o Futuro'?",opt:["Mustang","Camaro","DeLorean","Corvette"],a:2},{q:"Símbolo da Audi tem quantas argolas?",opt:["3","4","5","2"],a:1},{q:"Combustível feito da cana-de-açúcar?",opt:["Gasolina","Diesel","Etanol","Gás"],a:2},{q:"Qual é o carro do Batman?",opt:["Batmobile","Batmóvel","Batcar","DarkRide"],a:1},{q:"País de origem da Volvo?",opt:["Suécia","Suíça","Alemanha","EUA"],a:0},{q:"Qual peça é usada para trocar marchas?",opt:["Volante","Freio","Embreagem","Acelerador"],a:2},{q:"Qual a cor clássica das Ferraris?",opt:["Amarelo","Preto","Vermelho","Azul"],a:2},{q:"Modelo de carro mais vendido da história?",opt:["Fusca","Golf","Corolla","Civic"],a:2},
+                    {q:"Marca com logotipo de estrela de 3 pontas?",opt:["Mercedes-Benz","BMW","Audi","Subaru"],a:0},{q:"Carro famoso do agente 007?",opt:["Ferrari","Aston Martin","Porsche","Jaguar"],a:1},{q:"O que significa a sigla SUV?",opt:["Super Ultra Vehicle","Sport Utility Vehicle","Speed Urban Van","Street Utility Van"],a:1},{q:"Parte do carro onde se guarda a bagagem?",opt:["Porta-luvas","Capô","Porta-malas","Teto"],a:2},{q:"Líquido comum para limpar o para-brisa?",opt:["Óleo","Água com detergente","Gasolina","Fluido de freio"],a:1},{q:"Marca de luxo da Toyota?",opt:["Lexus","Infiniti","Acura","Genesis"],a:0},{q:"Um dos carros mais rápidos do mundo?",opt:["Fusca","Bugatti Veyron","Fiat Uno","Gol"],a:1},{q:"O que o tacômetro mede (RPM)?",opt:["Velocidade","Combustível","Rotações por Minuto","Temperatura"],a:2},{q:"Pedal da esquerda em carros manuais?",opt:["Freio","Acelerador","Embreagem","Descanso"],a:2},{q:"Marca famosa pelo modelo 911?",opt:["Ferrari","Porsche","Lamborghini","Bugatti"],a:1},
+                    {q:"Qual empresa criou o Mustang?",opt:["Chevrolet","Dodge","Ford","Pontiac"],a:2},{q:"País de origem da marca Hyundai?",opt:["Japão","China","Coreia do Sul","Tailândia"],a:2},{q:"Símbolo de um touro dourado?",opt:["Ferrari","Porsche","Lamborghini","Maserati"],a:2},{q:"Quantos cilindros tem um motor V8?",opt:["6","8","10","12"],a:1},{q:"O que significa 'GT' em carros?",opt:["Grande Turbo","Gran Turismo","Gas Total","Gear Top"],a:1},
+                    {q:"Marca que tem um leão no logotipo?",opt:["Peugeot","Jaguar","Citroën","Renault"],a:0},{q:"O que é um carro híbrido?",opt:["Só elétrico","Só gasolina","Elétrico e Combustão","Solar"],a:2},{q:"Marca famosa pelo modelo Fusca?",opt:["Ford","Fiat","VW","Toyota"],a:2},{q:"Qual peça filtra o ar do motor?",opt:["Filtro de Ar","Radiador","Carburador","Vela"],a:0},{q:"Qual a função do radiador?",opt:["Esfriar o motor","Acelerar","Frear","Ligar o rádio"],a:0},{q:"Marca de luxo da Honda?",opt:["Acura","Lexus","Infiniti","Genesis"],a:0},{q:"O que é 4x4?",opt:["4 Portas","Tração nas 4 rodas","4 Marchas","4 Passageiros"],a:1},{q:"País de origem da Rolls-Royce?",opt:["EUA","Alemanha","Reino Unido","Itália"],a:2}
+                ],
+                mundo:[
+                    {q:"Capital da França?",opt:["Londres","Berlim","Paris","Madri"],a:2},{q:"Onde ficam as Pirâmides de Gizé?",opt:["México","Egito","Peru","China"],a:1},{q:"Moeda usada no Japão?",opt:["Dólar","Won","Iene","Yuan"],a:2},{q:"Maior país do mundo em área?",opt:["EUA","China","Brasil","Rússia"],a:3},{q:"Qual oceano banha o Brasil?",opt:["Pacífico","Índico","Atlântico","Ártico"],a:2},{q:"Quem descobriu a América?",opt:["Cabral","Colombo","Vasco da Gama","Magalhães"],a:1},{q:"Capital da Austrália?",opt:["Sydney","Melbourne","Camberra","Perth"],a:2},{q:"País conhecido pelo formato de bota?",opt:["Portugal","Espanha","Grécia","Itália"],a:3},{q:"Continente com maior número de países?",opt:["Ásia","Europa","África","América"],a:2},{q:"Presidente do Brasil que construiu Brasília?",opt:["Vargas","Kubitschek (JK)","Lula","FHC"],a:1},{q:"Onde fica a Torre de Pisa?",opt:["França","Itália","Espanha","Alemanha"],a:1},{q:"Qual é o 'Planeta Vermelho'?",opt:["Vênus","Marte","Júpiter","Saturno"],a:1},
+                    {q:"Capital da Argentina?",opt:["Santiago","Buenos Aires","Lima","Bogotá"],a:1},{q:"Onde fica a Grande Muralha?",opt:["Japão","Coreia","China","Mongólia"],a:2},{q:"Maior rio do mundo em extensão?",opt:["Nilo","Amazonas","Mississippi","Yangtze"],a:1},{q:"Continente coberto de gelo?",opt:["África","Antártida","Europa","Oceania"],a:1},{q:"País famoso pelo Tango?",opt:["Brasil","Espanha","Argentina","México"],a:2},{q:"Onde fica Machu Picchu?",opt:["Brasil","Chile","Peru","Bolívia"],a:2},{q:"Capital da Rússia?",opt:["São Petersburgo","Moscou","Kiev","Minsk"],a:1},{q:"País conhecido como Terra do Sol Nascente?",opt:["China","Coreia do Sul","Japão","Tailândia"],a:2},{q:"Maior deserto quente do mundo?",opt:["Atacama","Gobi","Saara","Kalahari"],a:2},{q:"Capital da Alemanha?",opt:["Munique","Frankfurt","Berlim","Hamburgo"],a:2},
+                    {q:"Qual é o menor país do mundo?",opt:["Mônaco","Vaticano","Malta","Nauru"],a:1},{q:"Em que continente fica o Egito?",opt:["Ásia","Europa","África","América"],a:2},{q:"Capital do Canadá?",opt:["Toronto","Vancouver","Ottawa","Montreal"],a:2},{q:"Monte mais alto do mundo?",opt:["K2","Everest","Kilimanjaro","Aconcágua"],a:1},{q:"País famoso pelos cangurus?",opt:["Nova Zelândia","Austrália","África do Sul","Brasil"],a:1},
+                    {q:"Capital da Espanha?",opt:["Barcelona","Madri","Sevilha","Valência"],a:1},{q:"Onde fica o Taj Mahal?",opt:["Índia","Tailândia","Turquia","Paquistão"],a:0},{q:"Língua mais falada no mundo?",opt:["Inglês","Espanhol","Mandarim","Hindi"],a:2},{q:"Capital dos EUA?",opt:["Nova York","Washington D.C.","Los Angeles","Chicago"],a:1},{q:"País com formato de 'ilha comprida'?",opt:["Chile","Japão","Cuba","Itália"],a:0},{q:"Onde fica o Coliseu?",opt:["Atenas","Roma","Paris","Londres"],a:1},{q:"Rio que atravessa Londres?",opt:["Sena","Tâmisa","Danúbio","Reno"],a:1},{q:"Capital da China?",opt:["Xangai","Hong Kong","Pequim","Cantão"],a:2}
+                ],
+                matematica:[
+                    {q:"Quanto é 7 x 8?",opt:["54","56","48","64"],a:1},{q:"Raiz quadrada de 81?",opt:["7","8","9","10"],a:2},{q:"Quantos gramas tem 1kg?",opt:["100","500","1000","10000"],a:2},{q:"Quanto é meia dúzia?",opt:["6","12","5","10"],a:0},{q:"Ângulo reto tem quantos graus?",opt:["45","90","180","360"],a:1},{q:"10% de 500 é?",opt:["5","50","100","25"],a:1},{q:"Qual é o único número primo par?",opt:["1","2","4","0"],a:1},{q:"Quanto é 15 + 15?",opt:["20","25","30","40"],a:2},{q:"Lados de um hexágono?",opt:["5","6","7","8"],a:1},{q:"Dobro de 1024?",opt:["2000","2048","2056","2100"],a:1},{q:"O que pesa mais: 1kg de chumbo ou 1kg de pena?",opt:["Chumbo","Pena","Iguais","Depende"],a:2},{q:"Resultado de 100 dividido por 4?",opt:["20","25","24","10"],a:1},
+                    {q:"Quanto é 8 x 8?",opt:["64","56","72","81"],a:0},{q:"Metade de 50?",opt:["20","25","30","15"],a:1},{q:"Quanto é 100 - 35?",opt:["55","65","75","45"],a:1},{q:"Quantos lados tem um triângulo?",opt:["3","4","5","6"],a:0},{q:"Quantos minutos tem 1 hora?",opt:["100","50","60","30"],a:2},{q:"Quanto é 10 elevado a 2?",opt:["20","100","200","1000"],a:1},{q:"O algarismo romano V vale quanto?",opt:["1","5","10","50"],a:1},{q:"Próximo número primo depois do 7?",opt:["9","10","11","13"],a:2},{q:"Soma dos ângulos internos de um triângulo?",opt:["90","180","360","270"],a:1},{q:"Quanto são 3 dúzias?",opt:["24","30","36","48"],a:2},
+                    {q:"Qual é o valor aproximado de Pi?",opt:["3,14","3,41","3,12","3,15"],a:0},{q:"Quanto é 5 fatorial (5!)?",opt:["120","60","24","100"],a:0},{q:"Raiz quadrada de 144?",opt:["10","11","12","14"],a:2},{q:"Triplo de 15?",opt:["30","45","60","50"],a:1},{q:"Qual número não é primo?",opt:["2","3","5","9"],a:3},
+                    {q:"Quanto é 9 x 9?",opt:["81","72","64","90"],a:0},{q:"Quantos lados tem um pentágono?",opt:["4","5","6","7"],a:1},{q:"Metade de 250?",opt:["100","120","125","150"],a:2},{q:"1/2 em porcentagem?",opt:["25%","50%","75%","100%"],a:1},{q:"Quanto é 12 x 12?",opt:["124","134","144","154"],a:2},{q:"Soma de 1 a 5 (1+2+3+4+5)?",opt:["10","15","20","25"],a:1},{q:"Qual é o cubo de 2?",opt:["4","6","8","10"],a:2},{q:"Ângulo de uma volta completa?",opt:["180","270","360","90"],a:2}
+                ]
             };
-            let state={mode:'solo',questions:[],currentIdx:0,p1:{score:0},p2:{score:0},turn:1,timer:null,timeLeft:30};
+            let state={mode:'solo',questions:[],currentIdx:0,p1:{score:0,combo:0,powerups:{'5050':true,'skip':true}},p2:{score:0,combo:0,powerups:{'5050':true,'skip':true}},turn:1,timer:null,timeLeft:30,maxTime:30};
             const quizAPI={
                 setMode:(m)=>{state.mode=m; container.querySelector('#btn-solo').classList.toggle('selected',m==='solo'); container.querySelector('#btn-duo').classList.toggle('selected',m==='duo');},
                 startGame:(cat)=>{
-                    state.p1={score:0}; state.p2={score:0}; state.currentIdx=0; state.turn=1;
-                    state.questions=(database[cat]||[]).sort(()=>Math.random()-0.5).slice(0, 10);
-                    container.querySelector('#hud-p2').style.display=state.mode==='duo'?'block':'none';
-                    quizAPI.switchScreen('screen-game'); quizAPI.nextQuestion();
+                    state.p1={score:0,combo:0,powerups:{'5050':true,'skip':true}}; state.p2={score:0,combo:0,powerups:{'5050':true,'skip':true}};
+                    state.currentIdx=0; state.turn=1;
+                    let list=[]; if(cat==='geral') Object.values(database).forEach(arr=>list.push(...arr)); else list=database[cat]||[];
+                    // CORRIGIDO: Embaralha TODAS as perguntas do banco e pega as primeiras 15.
+                    // Isso garante que cada jogo tenha um conjunto diferente de perguntas.
+                    state.questions=list.sort(()=>Math.random()-0.5).slice(0, 15); 
+                    container.querySelector('#hud-p2').style.display=state.mode==='duo'?'block':'none'; container.querySelector('#final-row-p2').style.display=state.mode==='duo'?'flex':'none';
+                    quizAPI.switchScreen('screen-game'); quizAPI.updateHUD(); quizAPI.nextQuestion();
                 },
                 switchScreen:(id)=>{container.querySelectorAll('.quiz-screen').forEach(s=>s.classList.remove('active'));container.querySelector('#'+id).classList.add('active');},
                 returnToMenu:()=>{clearInterval(state.timer); quizAPI.switchScreen('screen-menu');},
                 nextQuestion:()=>{
                     if(state.currentIdx>=state.questions.length){quizAPI.endGame();return;}
-                    state.timeLeft=30; quizAPI.startTimer();
+                    state.timeLeft=state.maxTime; quizAPI.startTimer(); quizAPI.updateTurnUI(); quizAPI.updatePowerUpButtons();
                     const q=state.questions[state.currentIdx]; container.querySelector('#question-text').innerText=q.q;
                     const div=container.querySelector('#options-container'); div.innerHTML='';
                     q.opt.forEach((txt,i)=>{
-                        const btn=document.createElement('button'); btn.className='option-btn bg-gray-600 p-4 rounded-lg text-white hover:bg-gray-500'; btn.innerText=txt;
+                        const btn=document.createElement('button'); btn.className='option-btn'; btn.innerText=txt; btn.setAttribute('data-index',["A","B","C","D"][i]); btn.setAttribute('id','opt-'+i);
                         btn.onclick=()=>quizAPI.answer(i,btn); div.appendChild(btn);
                     });
                 },
                 startTimer:()=>{
-                    clearInterval(state.timer); const bar=container.querySelector('#timer-bar');
+                    clearInterval(state.timer); const bar=container.querySelector('#timer-bar'), txt=container.querySelector('#timer-text');
+                    bar.className='timer-fill'; bar.style.width='100%'; bar.style.backgroundColor='var(--timer-ok)';
                     state.timer=setInterval(()=>{
-                        state.timeLeft--; const pct=(state.timeLeft/30)*100; bar.style.width=pct+'%';
-                        if(state.timeLeft<=0) quizAPI.advanceTurn();
+                        state.timeLeft--; const pct=(state.timeLeft/state.maxTime)*100; bar.style.width=pct+'%'; txt.innerText=state.timeLeft+'s';
+                        if(state.timeLeft<=10) bar.style.backgroundColor='var(--timer-warn)';
+                        if(state.timeLeft<=5){bar.style.backgroundColor='var(--timer-critical)';bar.classList.add('timer-critical');}
+                        if(state.timeLeft<=0) quizAPI.timeOut();
                     },1000);
                 },
+                timeOut:()=>{clearInterval(state.timer); quizAPI.playSound('wrong'); const p=state.turn===1?state.p1:state.p2; p.combo=0; const cIdx=state.questions[state.currentIdx].a; container.querySelectorAll('.option-btn')[cIdx].classList.add('correct'); container.querySelectorAll('.option-btn').forEach(b=>b.disabled=true); quizAPI.shakeScreen(); setTimeout(()=>quizAPI.advanceTurn(),2000);},
                 answer:(idx,btn)=>{
                     clearInterval(state.timer); const q=state.questions[state.currentIdx], isCorrect=(idx===q.a), p=state.turn===1?state.p1:state.p2;
-                    if(isCorrect){ btn.classList.add('bg-green-500'); p.score+=100; } else { btn.classList.add('bg-red-500'); }
-                    container.querySelector('#score-p1').innerText=state.p1.score; container.querySelector('#score-p2').innerText=state.p2.score;
-                    setTimeout(()=>quizAPI.advanceTurn(),1500);
+                    container.querySelectorAll('.option-btn').forEach(b=>b.disabled=true);
+                    if(isCorrect){ btn.classList.add('correct'); quizAPI.playSound('correct'); p.combo++; let pts=100+(state.timeLeft*2); if(p.combo>1) pts+=(p.combo*50); p.score+=Math.floor(pts); }
+                    else { btn.classList.add('wrong'); quizAPI.playSound('wrong'); p.combo=0; container.querySelector('#opt-'+q.a).classList.add('correct'); quizAPI.shakeScreen(); }
+                    quizAPI.updateHUD(); setTimeout(()=>quizAPI.advanceTurn(),2000);
                 },
                 advanceTurn:()=>{ if(state.mode==='duo') state.turn=state.turn===1?2:1; state.currentIdx++; quizAPI.nextQuestion(); },
+                usePowerUp:(type)=>{
+                    const p=state.turn===1?state.p1:state.p2; if(!p.powerups[type]) return;
+                    quizAPI.playSound('powerup'); p.powerups[type]=false; quizAPI.updatePowerUpButtons();
+                    if(type==='skip'){clearInterval(state.timer); const fb=document.createElement('div'); fb.innerText="PULOU!"; fb.style.cssText="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:3rem;color:var(--gold);font-weight:bold;text-shadow:0 0 10px black;z-index:100;"; container.querySelector('#quiz-main-container').appendChild(fb); setTimeout(()=>{fb.remove();quizAPI.advanceTurn();},1000);}
+                    else if(type==='5050'){const q=state.questions[state.currentIdx], w=[0,1,2,3].filter(i=>i!==q.a).sort(()=>Math.random()-0.5).slice(0,2); w.forEach(idx=>{const el=container.querySelector('#opt-'+idx); if(el){el.style.opacity='0';el.disabled=true;}});}
+                },
+                updatePowerUpButtons:()=>{const p=state.turn===1?state.p1:state.p2; container.querySelector('#btn-5050').disabled=!p.powerups['5050']; container.querySelector('#btn-skip').disabled=!p.powerups['skip'];},
+                updateHUD:()=>{container.querySelector('#score-p1').innerText=state.p1.score; container.querySelector('#score-p2').innerText=state.p2.score; const c1=container.querySelector('#combo-p1'), c2=container.querySelector('#combo-p2'); if(state.p1.combo>1){c1.innerText=`COMBO x${state.p1.combo} 🔥`;c1.classList.add('visible');}else c1.classList.remove('visible'); if(state.p2.combo>1){c2.innerText=`COMBO x${state.p2.combo} 🔥`;c2.classList.add('visible');}else c2.classList.remove('visible');},
+                updateTurnUI:()=>{const h1=container.querySelector('#hud-p1'), h2=container.querySelector('#hud-p2'); if(state.mode==='duo'){if(state.turn===1){h1.classList.add('active');h2.classList.remove('active');}else{h1.classList.remove('active');h2.classList.add('active');}}else h1.classList.add('active');},
+                shakeScreen:()=>{const c=container.querySelector('#quiz-main-container'); c.classList.add('shake-anim'); setTimeout(()=>c.classList.remove('shake-anim'),500);},
                 endGame:()=>{
-                    quizAPI.switchScreen('screen-end');
+                    clearInterval(state.timer); quizAPI.switchScreen('screen-end');
+                    container.querySelector('#final-p1').innerText=state.p1.score; container.querySelector('#final-p2').innerText=state.p2.score; container.querySelector('#final-total').innerText=state.questions.length;
                     const wd=container.querySelector('#winner-display');
-                    wd.innerText=state.mode==='duo'?(state.p1.score>state.p2.score?"Venceu P1":"Venceu P2"):"Pontos: "+state.p1.score;
-                }
+                    if(state.mode==='duo'){if(state.p1.score>state.p2.score){wd.innerText="🏆 JOGADOR 1 VENCEU!";wd.style.color="var(--p1)";}else if(state.p2.score>state.p1.score){wd.innerText="🏆 JOGADOR 2 VENCEU!";wd.style.color="var(--p2)";}else{wd.innerText="🤝 EMPATE ÉPICO!";wd.style.color="#fff";}}else{wd.innerText="FIM DA JORNADA!";wd.style.color="var(--gold)";}
+                },
+                playSound:(t)=>{try{const now=Tone.now(); if(t==='correct'){const o=new Tone.Oscillator(600,"triangle").toDestination().start(now).stop(now+0.5);o.frequency.rampTo(1200,0.1);}else if(t==='wrong'){const o=new Tone.Oscillator(150,"sawtooth").toDestination().start(now).stop(now+0.4);o.frequency.rampTo(80,0.3);}else if(t==='powerup'){const o=new Tone.Oscillator(800,"sine").toDestination().start(now).stop(now+0.3);o.frequency.rampTo(1500,0.2);}}catch(e){}}
             };
-            window.quizAPI=quizAPI; return ()=>{clearInterval(state.timer); window.quizAPI=undefined;};
+            window.quizAPI=quizAPI; return ()=>{if(state.timer)clearInterval(state.timer); window.quizAPI=undefined;};
         }
 
-        // 6. AERO STRIKER
+        // =================================================================
+        // JOGO 6: AERO STRIKER ULTIMATE
+        // =================================================================
         function initAeroStriker(container) {
             // Estilos específicos do Aero Striker (Scoped ID)
             const css = `
@@ -981,7 +1048,7 @@
                 if (audioCtx) audioCtx.close();
             };
         }
-        // --- CONSTANTES E FUNÇÕES AUXILIARES ---
+
         const nameDatabase = { 
             // --- TÍTULOS DE JESUS E DEUS (Seu pedido especial) ---
             "jesus": "Yahweh Salva. Títulos: Cristo, Emanuel, Cordeiro de Deus, Leão de Judá, Luz do Mundo.",
