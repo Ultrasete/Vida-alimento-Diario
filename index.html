@@ -2491,20 +2491,59 @@
             );
         };
 
-        // --- 4. COMPONENTES PRINCIPAIS ADICIONAIS ---
+       // --- 4. COMPONENTES PRINCIPAIS ADICIONAIS ---
         const HomeScreen = ({ setActiveTab }) => (
             <div className="p-4 animate-fadeIn space-y-6">
+                {/* Banner do Versículo */}
                 <div className="bg-gradient-to-r from-red-800 to-red-600 rounded-2xl p-6 text-white text-center shadow-lg transform transition hover:scale-[1.02]">
                     <h1 className="font-serif italic text-xl mb-2">"Lâmpada para os meus pés é a tua palavra."</h1>
                     <p className="text-xs uppercase opacity-70 font-bold">Salmos 119:105</p>
                 </div>
+                
+                {/* Grade de Botões */}
                 <div className="grid grid-cols-3 gap-3">
+                    {/* Botões do Menu Interno (Bíblia, Financeiro, etc.) */}
                     {NAV_ITEMS.filter(i => i.id !== 'home').map(item => (
                         <button key={item.id} onClick={() => setActiveTab(item.id)} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-2 hover:bg-red-50 transition-colors active:scale-95">
                             <i className={`fas ${item.icon} text-red-600 text-xl`}></i>
                             <span className="text-xs font-bold text-gray-700">{item.label}</span>
                         </button>
                     ))}
+
+                    {/* Botão Extra 1: Compras */}
+                    <a 
+                        href="https://collshp.com/janiocarlos383605" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-2 hover:bg-red-50 transition-colors active:scale-95 no-underline cursor-pointer"
+                    >
+                        <i className="fas fa-shopping-bag text-red-600 text-xl"></i>
+                        <span className="text-xs font-bold text-gray-700">Compras</span>
+                    </a>
+
+                    {/* Botão Extra 2: Arqueologia */}
+                    <a 
+                        href="https://www.youtube.com/@RodrigoSilvaArqueologia" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-2 hover:bg-red-50 transition-colors active:scale-95 no-underline cursor-pointer"
+                    >
+                        <i className="fab fa-youtube text-red-600 text-xl"></i>
+                        <span className="text-xs font-bold text-gray-700">Arqueologia</span>
+                    </a>
+
+                    {/* Botão Extra 3: Playbacks */}
+                    <a 
+                        href="https://www.youtube.com/watch?v=4xV89qU-Ikw&list=PLiPWKYfyuSUwDcLfVSfokQit8YOzbecmp" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center gap-2 hover:bg-red-50 transition-colors active:scale-95 no-underline cursor-pointer"
+                    >
+                        {/* Ícone de Música */}
+                        <i className="fas fa-music text-red-600 text-xl"></i>
+                        <span className="text-xs font-bold text-gray-700">Playbacks</span>
+                    </a>
+                    
                 </div>
             </div>
         );
